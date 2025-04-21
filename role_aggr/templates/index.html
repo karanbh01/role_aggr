@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>role/agg</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tienne:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Gelasio:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        // Simple JavaScript to handle loading state
+        document.addEventListener('DOMContentLoaded', function() {
+            const jobListings = document.querySelector('.job-listings');
+            const loadingElement = document.querySelector('.loading');
+            
+            if (jobListings && loadingElement) {
+                // Hide loading after content is loaded
+                loadingElement.style.display = 'none';
+                jobListings.style.display = 'grid';
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><span>role</span><span class="separator">/</span><span>agg</span></h1>
+        </header>
+        
+        <div class="controls">
+            <a href="/refresh" class="refresh-button">Refresh Listings</a>
+            
+            <div class="filter-section">
+                <form action="/" method="get" class="filter-form">
+                    <label for="company-filter">Filter by Company:</label>
+                    <select id="company-filter" name="company" class="company-filter">
+                        <option value="">All Companies</option>
+                        {% for company in companies %}
+                            <option value="{{ company }}" {% if company == selected_company %}selected{% endif %}>{{ company }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="filter-button">Apply Filter</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading job listings...</p>
+        </div>
+        
+        <div class="job-listings" style="display: none;">
+            {% if jobs %}
+                {% for job in jobs %}
+                    <a href="{{ job.url }}" class="job-card" target="_blank">
+                        <div class="job-info">
+                            <h2 class="job-title">{{ job.title }}</h2>
+                            <div class="job-company">{{ job.company }}</div>
+                            {% if job.location is defined and job.location != "N/A" %}
+                            <div class="job-location">Location: {{ job.location }}</div>
+                            {% endif %}
+                            <div class="job-date">Posted: {{ job.date_posted }}</div>
+                        </div>
+                        <div class="job-meta">
+                            <div class="job-source">{{ job.source }}</div>
+                        </div>
+                    </a>
+                {% endfor %}
+            {% else %}
+                <div class="no-jobs">
+                    <h2>No job listings found</h2>
+                    <p>Try refreshing the listings or check back later.</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <footer>
+            <p>&copy; 2025 role/agg | Data sourced from various job boards</p>
+        </footer>
+    </div>
+</body>
+</html>
