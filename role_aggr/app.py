@@ -1,147 +1,148 @@
-from flask import Flask, render_template, request
+# role_aggr/app.py - Final Version with DB DateTime
+
+from flask import Flask, render_template, request, redirect, url_for, flash
 import os
-import json
-import time
-import re
-from datetime import datetime, timedelta
-from scraper import get_all_jobs
+import re # Keep re if needed elsewhere, otherwise remove
+from datetime import datetime, timedelta # Keep datetime for formatting
+from sqlalchemy.orm import joinedload, Session
+from sqlalchemy import desc # Import desc for ordering
+import threading
+
+# Database imports
+try:
+    from database.database import SessionLocal, Listing, Company, JobBoard
+except ImportError:
+    import sys
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    try:
+        from role_aggr.database.database import SessionLocal, Listing, Company, JobBoard
+    except ImportError as e:
+        print(f"Error importing database modules in app.py: {e}")
+        sys.exit(1)
+
+# Scraper update function import
+try:
+    from scraper import update_job_listings_from_boards
+except ImportError as e:
+     print(f"Error importing scraper update function: {e}")
+     def update_job_listings_from_boards():
+         print("Error: Scraper function 'update_job_listings_from_boards' not available.")
+         import time
+         time.sleep(5)
+
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
 
-# Cache for job listings
-CACHE_FILE = 'job_cache.json'
-CACHE_EXPIRY = 3600  # Cache expiry in seconds (1 hour)
+# --- Date Parsing and Sorting Removed ---
+# parse_date and sort_jobs_by_date are no longer needed here
 
-def parse_date(date_str):
-    """
-    Parse date string to datetime object for sorting
-    """
-    if not date_str or date_str == 'N/A':
-        # If no date, assume it's old (30 days ago)
-        return datetime.now() - timedelta(days=30)
-    
-    # Try to parse common date formats
-    date_str = date_str.lower()
-    
-    # Handle relative dates like "2 days ago", "1 week ago", etc.
-    if 'ago' in date_str:
-        # Extract number and unit
-        match = re.search(r'(\d+)\s+(day|days|week|weeks|month|months|hour|hours|minute|minutes)', date_str)
-        if match:
-            num = int(match.group(1))
-            unit = match.group(2)
-            
-            if 'minute' in unit:
-                return datetime.now() - timedelta(minutes=num)
-            elif 'hour' in unit:
-                return datetime.now() - timedelta(hours=num)
-            elif 'day' in unit:
-                return datetime.now() - timedelta(days=num)
-            elif 'week' in unit:
-                return datetime.now() - timedelta(weeks=num)
-            elif 'month' in unit:
-                return datetime.now() - timedelta(days=num*30)
-    
-    # Handle "today", "yesterday"
-    if 'today' in date_str:
-        return datetime.now()
-    elif 'yesterday' in date_str:
-        return datetime.now() - timedelta(days=1)
-    
-    # Try common date formats
-    date_formats = [
-        '%Y-%m-%d',           # 2023-04-21
-        '%d/%m/%Y',           # 21/04/2023
-        '%m/%d/%Y',           # 04/21/2023
-        '%d %b %Y',           # 21 Apr 2023
-        '%d %B %Y',           # 21 April 2023
-        '%B %d, %Y',          # April 21, 2023
-        '%b %d, %Y'           # Apr 21, 2023
-    ]
-    
-    for fmt in date_formats:
-        try:
-            return datetime.strptime(date_str, fmt)
-        except ValueError:
-            continue
-    
-    # If all parsing attempts fail, assume it's recent (today)
-    return datetime.now()
-
-def sort_jobs_by_date(jobs):
-    """
-    Sort jobs by date, most recent first
-    """
-    return sorted(jobs, key=lambda job: parse_date(job.get('date_posted', 'N/A')), reverse=True)
-
-def get_jobs_with_cache():
-    """
-    Get job listings with caching to avoid scraping on every request
-    """
-    # Check if cache file exists and is not expired
-    if os.path.exists(CACHE_FILE):
-        file_modified_time = os.path.getmtime(CACHE_FILE)
-        if time.time() - file_modified_time < CACHE_EXPIRY:
-            try:
-                with open(CACHE_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"Error reading cache: {str(e)}")
-    
-    # Cache doesn't exist or is expired, scrape new data
-    jobs = get_all_jobs()
-    
-    # Save to cache
-    try:
-        with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(jobs, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"Error writing cache: {str(e)}")
-    
-    return jobs
+# --- Flask Routes ---
 
 @app.route('/')
 def index():
-    """
-    Main route to display job listings
-    """
-    # Get filter parameters
+    """Main route to display job listings from the database."""
     company_filter = request.args.get('company', '')
-    
-    # Get jobs from cache
-    jobs = get_jobs_with_cache()
-    
-    # Apply company filter if provided
-    if company_filter:
-        jobs = [job for job in jobs if company_filter.lower() in job['company'].lower()]
-    
-    # Sort jobs by date
-    sorted_jobs = sort_jobs_by_date(jobs)
-    
-    # Get unique companies for filter dropdown
-    companies = sorted(set(job['company'] for job in jobs))
-    
-    return render_template('index.html', jobs=sorted_jobs, companies=companies, selected_company=company_filter)
+    db: Session = SessionLocal()
+    jobs_data = []
+    companies = []
+    error_message = None
 
-@app.route('/refresh')
-def refresh():
-    """
-    Route to force refresh the job listings cache
-    """
-    # Delete cache file if it exists
-    if os.path.exists(CACHE_FILE):
-        os.remove(CACHE_FILE)
-    
-    # Get fresh job listings
-    jobs = get_jobs_with_cache()
-    
-    # Get unique companies for filter dropdown
-    companies = sorted(set(job['company'] for job in jobs))
-    
-    # Sort jobs by date
-    sorted_jobs = sort_jobs_by_date(jobs)
-    
-    return render_template('index.html', jobs=sorted_jobs, companies=companies, selected_company='')
+    try:
+        # Base query, eager load relationships
+        query = db.query(Listing).options(
+            joinedload(Listing.company),
+            joinedload(Listing.job_board)
+        )
+
+        # Apply company filter
+        if company_filter:
+            query = query.join(Company).filter(Company.name.ilike(f"%{company_filter}%"))
+
+        # Fetch listings, ordered by date_posted descending (latest first)
+        # Use nullslast() to put jobs with unknown dates at the end
+        listings = query.order_by(desc(Listing.date_posted).nullslast(), Listing.id.desc()).all()
+
+        # Convert Listing objects to dictionaries and format date
+        for listing in listings:
+            # Format the date for display
+            date_display = "N/A"
+            if listing.date_posted and listing.date_posted != datetime.min:
+                try:
+                    # Example format: "Oct 27, 2023" - adjust as desired
+                    date_display = listing.date_posted.strftime('%b %d, %Y')
+                except ValueError:
+                    # Handle potential invalid dates stored (shouldn't happen with default)
+                    date_display = "Invalid Date"
+
+            jobs_data.append({
+                'title': listing.title,
+                'company': listing.company.name if listing.company else 'N/A',
+                'location': listing.location or 'N/A',
+                'date_posted': date_display, # Use formatted date string
+                'url': listing.link,
+                'source': listing.job_board.name if listing.job_board else 'N/A'
+            })
+            # No need to sort jobs_data here, already ordered by query
+
+        # Get unique company names for the filter dropdown
+        companies = sorted([c.name for c in db.query(Company.name).distinct().order_by(Company.name)])
+
+    except Exception as e:
+        print(f"Error fetching data from database: {e}")
+        error_message = "Error loading job listings from the database."
+        # jobs_data remains []
+        companies = []
+    finally:
+        db.close()
+
+    if error_message:
+        flash(error_message, 'error')
+
+    # Pass jobs_data directly (already sorted by DB query)
+    return render_template('index.html',
+                           jobs=jobs_data,
+                           companies=companies,
+                           selected_company=company_filter)
+
+# --- Background Task Handling ---
+update_thread = None
+is_updating = False
+
+def run_update_task():
+    """Wrapper function to run the update and manage state."""
+    global is_updating
+    is_updating = True
+    print("Background update task started.")
+    try:
+        update_job_listings_from_boards()
+    except Exception as e:
+        print(f"Exception in background update task: {e}")
+    finally:
+        is_updating = False
+        print("Background update task finished.")
+
+@app.route('/update-jobs')
+def update_jobs():
+    """Route to trigger the background job scraping process."""
+    global update_thread, is_updating
+
+    if is_updating:
+        flash("An update is already in progress.", 'info')
+    else:
+        flash("Job listing update started in the background. Refresh the page in a few minutes.", 'success')
+        update_thread = threading.Thread(target=run_update_task)
+        update_thread.start()
+
+    return redirect(url_for('index'))
+
+@app.route('/update-status')
+def update_status():
+    """API endpoint to check if an update is running (optional)."""
+    global is_updating
+    return {"is_updating": is_updating}
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)
