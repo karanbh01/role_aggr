@@ -29,7 +29,7 @@ body {
 
 header {
   text-align: left;
-  margin-bottom: 30px;
+  margin-bottom: 150px; /* Increased space below title */
   padding: 20px 0;
   border-bottom: none; /* Remove border below title */
 }
@@ -37,23 +37,20 @@ header {
 h1 {
   margin: 0;
   color: #d5dee3;
-  font-size: 85px; /* Make font size bigger */
+  font-size: 110px; /* Make font size bigger */
 }
 
 h1 span:first-child {
-  font-family: 'Gelasio', serif;
-  font-weight: 400;
+  font-family: 'Fira Mono', monospace; /* Changed font */
+  font-weight: 400; /* Regular weight */
 }
 
 h1 span:last-child {
-  font-family: 'Gelasio', serif;
-  font-weight: 700;
+  font-family: 'Fira Mono', monospace; /* Changed font */
+  font-weight: 500; /* Medium weight */
   color: #154d7e; /* Change color of "/agg" */
 }
 
-.separator {
-  color: #154d7e; /* Change color of separator */
-}
 
 .subtitle {
   color: var(--secondary-color);
@@ -134,22 +131,21 @@ h1 span:last-child {
   flex-wrap: wrap;
   gap: 15px;
   padding-left: 200px; /* Align with job listings */
-}
-
-.refresh-button, .filter-section {
-  font-family: 'Geist', sans-serif;
-  font-size: 14px;
+  font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
+  font-weight: 500; /* Medium weight */
 }
 
 .refresh-button {
   display: inline-block;
-  background-color: transparent; /* Remove background color */
-  color: var(--text-color); /* Set text color */
+  background-color: transparent;
+  color: var(--text-color);
   padding: 8px 15px;
   border-radius: 4px;
   text-decoration: none;
   transition: background-color 0.2s;
-  border: 1px solid var(--border-color); /* Add border */
+  border: none; /* Remove border */
+  font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
+  font-weight: 500; /* Medium weight */
 }
 
 .refresh-button:hover {
@@ -159,6 +155,8 @@ h1 span:last-child {
 .filter-section {
   display: flex;
   align-items: center;
+  font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
+  font-weight: 500; /* Medium weight */
 }
 
 .filter-form {
@@ -168,22 +166,26 @@ h1 span:last-child {
 }
 
 .company-filter {
-  background-color: transparent; /* Remove background color */
+  background-color: transparent;
   color: var(--text-color);
   border: 1px solid var(--border-color);
   padding: 6px 10px;
   border-radius: 4px;
   min-width: 200px;
+  font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
+  font-weight: 500; /* Medium weight */
 }
 
 .filter-button {
-  background-color: transparent; /* Remove background color */
-  color: var(--text-color); /* Set text color */
-  border: 1px solid var(--border-color); /* Add border */
+  background-color: transparent;
+  color: var(--text-color);
+  border: none; /* Remove border */
   padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
+  font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
+  font-weight: 500; /* Medium weight */
 }
 
 .filter-button:hover {
@@ -232,27 +234,27 @@ footer {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .job-meta {
     text-align: left;
     margin-top: 10px;
     width: 100%;
   }
-  
+
   .container {
     padding: 10px;
   }
-  
+
   .controls {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-form {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .refresh-button {
     text-align: center;
   }
