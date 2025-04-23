@@ -11,15 +11,54 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Gelasio:wght@400;700&display=swap" rel="stylesheet">
     <script>
-        // Simple JavaScript to handle loading state
+        // Simple JavaScript to handle initial loading state
         document.addEventListener('DOMContentLoaded', function() {
             const jobListings = document.querySelector('.job-listings');
-            const loadingElement = document.querySelector('.loading');
-            
-            if (jobListings && loadingElement) {
-                // Hide loading after content is loaded
-                loadingElement.style.display = 'none';
+            const initialLoadingElement = document.querySelector('.loading');
+            const refreshButton = document.querySelector('.refresh-button');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            let updateInterval; // Variable to store the interval ID
+
+            if (jobListings && initialLoadingElement) {
+                // Hide initial loading after content is loaded
+                initialLoadingElement.style.display = 'none';
                 jobListings.style.display = 'grid';
+            }
+
+            // Function to check update status
+            function checkUpdateStatus() {
+                fetch('/update-status')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.is_updating) {
+                            loadingIndicator.style.display = 'inline-block'; // Show loading indicator
+                        } else {
+                            loadingIndicator.style.display = 'none'; // Hide loading indicator
+                            clearInterval(updateInterval); // Stop polling when update is complete
+                            // Optionally, refresh the page or update content here
+                            // For now, just hide the indicator and stop polling
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching update status:', error);
+                        loadingIndicator.style.display = 'none'; // Hide on error
+                        clearInterval(updateInterval); // Stop polling on error
+                    });
+            }
+
+            // Check status initially and then poll periodically
+            checkUpdateStatus(); // Check status on page load
+            updateInterval = setInterval(checkUpdateStatus, 2000); // Poll every 2 seconds and store interval ID
+
+            // Show loading indicator immediately when refresh button is clicked
+            if (refreshButton && loadingIndicator) {
+                refreshButton.addEventListener('click', function() {
+                    loadingIndicator.style.display = 'inline-block';
+                    // Restart polling if it was stopped
+                    if (!updateInterval) {
+                         updateInterval = setInterval(checkUpdateStatus, 2000);
+                    }
+                });
             }
         });
     </script>
@@ -31,7 +70,8 @@
         </header>
         
         <div class="controls">
-            <a href="/refresh" class="refresh-button">Refresh Listings</a>
+            <a href="/update-jobs" class="refresh-button">Refresh Listings</a>
+            <span id="loading-indicator" style="display: none; margin-left: 10px;">Loading...</span> {# Add loading indicator span #}
             
             <div class="filter-section">
                 <form action="/" method="get" class="filter-form">
@@ -57,7 +97,11 @@
                 {% for job in jobs %}
                     <a href="{{ job.url }}" class="job-card" target="_blank">
                         <div class="job-info">
-                            <h2 class="job-title">{{ job.title }}</h2>
+                            <h2 class="job-title">{{ job.title }}
+                                {% if job.is_new %}
+                                    <span class="new-tag">[NEW]</span>
+                                {% endif %}
+                            </h2>
                             <div class="job-company">{{ job.company }}</div>
                             {% if job.location is defined and job.location != "N/A" %}
                             <div class="job-location">Location: {{ job.location }}</div>
