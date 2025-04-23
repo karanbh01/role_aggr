@@ -259,3 +259,9 @@ footer {
     text-align: center;
   }
 }
+.new-tag {
+    color: yellow;
+    font-size: 0.8em; /* Make the tag slightly smaller than the title */
+    margin-left: 5px; /* Add some space between the title and the tag */
+    font-weight: normal; /* Ensure the tag is not bold */
+}

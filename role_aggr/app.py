@@ -76,13 +76,21 @@ def index():
                     # Handle potential invalid dates stored (shouldn't happen with default)
                     date_display = "Invalid Date"
 
+            # Determine if the job is new (posted within the last 24 hours)
+            is_new = False
+            if listing.date_posted and listing.date_posted != datetime.min:
+                time_difference = datetime.now() - listing.date_posted
+                if time_difference < timedelta(hours=24):
+                    is_new = True
+
             jobs_data.append({
                 'title': listing.title,
                 'company': listing.company.name if listing.company else 'N/A',
                 'location': listing.location or 'N/A',
                 'date_posted': date_display, # Use formatted date string
                 'url': listing.link,
-                'source': listing.job_board.name if listing.job_board else 'N/A'
+                'source': listing.job_board.name if listing.job_board else 'N/A',
+                'is_new': is_new # Add the is_new flag
             })
             # No need to sort jobs_data here, already ordered by query
 
