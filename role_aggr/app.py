@@ -10,13 +10,15 @@ import threading
 
 # Database imports
 try:
-    from database.database import SessionLocal, Listing, Company, JobBoard
+    from database.model import SessionLocal, Listing, Company
+    from database.functions import init_db, load_job_boards_from_csv, update_job_boards, DATABASE_FILE
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     try:
-        from role_aggr.database.database import SessionLocal, Listing, Company, JobBoard
+        from role_aggr.database.model import SessionLocal, Listing, Company
+        from role_aggr.database.functions import init_db, load_job_boards_from_csv, update_job_boards, DATABASE_FILE
     except ImportError as e:
         print(f"Error importing database modules in app.py: {e}")
         sys.exit(1)
@@ -153,4 +155,15 @@ def update_status():
 
 
 if __name__ == '__main__':
+    # Check if database exists
+    if not os.path.exists(DATABASE_FILE):
+        print("Database does not exist. Creating and initializing...")
+        init_db()
+        db = SessionLocal()
+        load_job_boards_from_csv(db)
+        db.close()
+    else:
+        print("Database exists. Updating job boards...")
+        update_job_boards()
+    
     app.run(debug=True, use_reloader=False)
