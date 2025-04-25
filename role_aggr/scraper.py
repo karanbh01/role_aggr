@@ -22,13 +22,13 @@ from sqlalchemy.exc import IntegrityError
 
 # Import database components
 try:
-    from .database.database import SessionLocal, get_db, Company, JobBoard, Listing
+    from .database.functions import SessionLocal, get_db, Company, JobBoard, Listing
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     try:
-        from role_aggr.database.database import SessionLocal, get_db, Company, JobBoard, Listing
+        from role_aggr.database.functions import SessionLocal, get_db, Company, JobBoard, Listing
     except ImportError as e:
         print(f"Error importing database modules: {e}")
         sys.exit(1)

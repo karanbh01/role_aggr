@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # A
 
 try:
     # Import Listing model as well
-    from role_aggr.database.database import init_db, load_job_boards_from_csv, SessionLocal, DATABASE_FILE, Listing
+    from role_aggr.database.functions import init_db, load_job_boards_from_csv, SessionLocal, DATABASE_FILE, Listing
     from role_aggr.scraper import update_job_listings_from_boards
 except ImportError as e:
     print(f"Error importing necessary modules: {e}")
