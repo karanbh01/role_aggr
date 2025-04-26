@@ -22,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 
 # Import database components
 try:
-    from .database.functions import SessionLocal, get_db, Company, JobBoard, Listing
+    from database.functions import SessionLocal, get_db, Company, JobBoard, Listing
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
