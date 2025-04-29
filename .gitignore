@@ -50,8 +50,11 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
-/.roomodes
 /.env
 
 #database
 *.db
+
+# AI
+/.roomodes
+planning/
