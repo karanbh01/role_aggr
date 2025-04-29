@@ -25,7 +25,7 @@ except ImportError:
 
 # Scraper update function import
 try:
-    from scraper import update_job_listings_from_boards
+    from scraper.scraper import update_job_listings_from_boards
 except ImportError as e:
      print(f"Error importing scraper update function: {e}")
      def update_job_listings_from_boards():
