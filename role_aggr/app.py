@@ -1,12 +1,45 @@
-# role_aggr/app.py - Final Version with DB DateTime
+print("--- DEBUG: Starting app.py ---") # Added debug print at the very beginning
 
+# role_aggr/app.py
+
+# --- Early Logging Configuration ---
+# Configure logging as early as possible, before other project imports that might use logging.
+import logging
+# from logging.handlers import RotatingFileHandler # Removed RotatingFileHandler import
+import os # For app.secret_key
+
+# Basic configuration for the root logger.
+# Modules using logging.getLogger(__name__) will inherit this.
+# Configuring only console output for now to isolate issues.
+console_handler = logging.StreamHandler() # Handler to output to console
+console_handler.setLevel(logging.DEBUG)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+
+logging.basicConfig(level=logging.DEBUG,
+                    handlers=[
+                        console_handler # Only console handler for now
+                    ])
+
+logging.info("Root logger configured at top of app.py. Logging to console only.")
+
+# --- Standard Flask and App Imports ---
 from flask import Flask, render_template, request, redirect, url_for, flash
-import os
-import re # Keep re if needed elsewhere, otherwise remove
-from datetime import datetime, timedelta # Keep datetime for formatting
+import sys, os
+from datetime import datetime, timedelta
+import pytz
 from sqlalchemy.orm import joinedload, Session
-from sqlalchemy import desc # Import desc for ordering
+from sqlalchemy import desc
 import threading
+
+# Add the project root to sys.path to enable importing modules like 'environment'
+# when this script is run directly as a module.
+# Alternative method using a known file within the package.
+_current_file_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root_alt = os.path.abspath(os.path.join(_current_file_dir, '..'))
+if _project_root_alt not in sys.path:
+    sys.path.insert(0, _project_root_alt)
+
 
 # Database imports
 try:
@@ -14,28 +47,30 @@ try:
     from database.functions import init_db, load_job_boards_from_csv, update_job_boards, DATABASE_FILE
 except ImportError:
     import sys
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    try:
-        from role_aggr.database.model import SessionLocal, Listing, Company
-        from role_aggr.database.functions import init_db, load_job_boards_from_csv, update_job_boards, DATABASE_FILE
-    except ImportError as e:
-        print(f"Error importing database modules in app.py: {e}")
-        sys.exit(1)
+    # If run directly, __file__ is app.py. os.path.dirname gives role_aggr.
+    # os.path.dirname(os.path.dirname()) gives project root.
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    # Attempt imports again after path modification
+    from database.model import SessionLocal, Listing, Company
+    from database.functions import init_db, load_job_boards_from_csv, update_job_boards, DATABASE_FILE
+
 
 # Scraper update function import
 try:
-    from scraper.scraper import update_job_listings_from_boards
+    from role_aggr.scraper import update_job_listings_from_boards
 except ImportError as e:
-     print(f"Error importing scraper update function: {e}")
+     logging.error(f"Error importing scraper update function from role_aggr.scraper: {e}", exc_info=True)
      def update_job_listings_from_boards():
-         print("Error: Scraper function 'update_job_listings_from_boards' not available.")
-         import time
-         time.sleep(5)
-
+         logging.error("Fallback: Scraper function 'update_job_listings_from_boards' not available due to import error.")
+         # Avoid print here, use logging
+         # import time # time is already imported via datetime
+         # time.sleep(5) # Not useful in a real scenario
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
 
 # --- Date Parsing and Sorting Removed ---
 # parse_date and sort_jobs_by_date are no longer needed here
@@ -70,7 +105,7 @@ def index():
         for listing in listings:
             # Format the date for display
             date_display = "N/A"
-            if listing.date_posted and listing.date_posted != datetime.min:
+            if listing.date_posted and listing.date_posted != datetime.min.replace(tzinfo=pytz.utc):
                 try:
                     # Example format: "Oct 27, 2023" - adjust as desired
                     date_display = listing.date_posted.strftime('%b %d, %Y')
@@ -80,8 +115,9 @@ def index():
 
             # Determine if the job is new (posted within the last 24 hours)
             is_new = False
-            if listing.date_posted and listing.date_posted != datetime.min:
-                time_difference = datetime.now() - listing.date_posted
+            if listing.date_posted and listing.date_posted != datetime.min.replace(tzinfo=pytz.utc):
+                now_utc = datetime.now(pytz.utc)
+                time_difference = now_utc - listing.date_posted.replace(tzinfo=pytz.utc)
                 if time_difference < timedelta(hours=24):
                     is_new = True
 
@@ -136,6 +172,7 @@ def run_update_task():
 @app.route('/update-jobs')
 def update_jobs():
     """Route to trigger the background job scraping process."""
+    print("--- DEBUG: /update-jobs route hit ---") # Added debug print
     global update_thread, is_updating
 
     if is_updating:
@@ -155,15 +192,24 @@ def update_status():
 
 
 if __name__ == '__main__':
+    # Logging is now configured at the top of the file.
+    # The app.logger will also use this configuration if Flask doesn't override it.
+    # However, for Flask apps, it's common for Flask's own logging setup (especially with debug=True)
+    # to take precedence for app.logger. The root logger setup we did should still catch other modules.
+
+    app.logger.info("Flask app starting...") # This will use Flask's logger, which might be different from root.
+
     # Check if database exists
     if not os.path.exists(DATABASE_FILE):
-        print("Database does not exist. Creating and initializing...")
+        logging.info("Database does not exist. Creating and initializing...")
         init_db()
         db = SessionLocal()
         load_job_boards_from_csv(db)
         db.close()
+        logging.info("Database created and initialized.")
     else:
-        print("Database exists. Updating job boards...")
+        logging.info("Database exists. Updating job boards...")
         update_job_boards()
+        logging.info("Job boards updated.")
     
     app.run(debug=True, use_reloader=False)
