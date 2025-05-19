@@ -2,7 +2,7 @@ import os
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, UniqueConstraint, DateTime # Import DateTime
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 import datetime # Import datetime for default value
-from environment import DATABASE_FILE
+from role_aggr.environment import DATABASE_FILE
 
 # Create the base class for declarative models
 Base = declarative_base()
@@ -49,7 +49,7 @@ class Listing(Base):
     description = Column(Text, nullable=True) # Allow for longer descriptions
     link = Column(String, unique=True, nullable=False) # Unique link to avoid duplicates
     # Change date_posted to DateTime type
-    date_posted = Column(DateTime, nullable=True, default=datetime.datetime.min) # Use DateTime, provide a default
+    date_posted = Column(DateTime(timezone=True), nullable=True, default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)) # Use timezone-aware DateTime
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
     job_board_id = Column(Integer, ForeignKey('job_boards.id'), nullable=False)
 
