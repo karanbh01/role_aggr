@@ -17,7 +17,8 @@
             const initialLoadingElement = document.querySelector('.loading');
             const refreshButton = document.querySelector('.refresh-button');
             const loadingIndicator = document.getElementById('loading-indicator');
-            let updateInterval; // Variable to store the interval ID
+            let updateInterval = null; // Variable to store the interval ID, initially null
+            let anUpdateWasStarted = false; // Flag to track if an update process was initiated by the client
 
             if (jobListings && initialLoadingElement) {
                 // Hide initial loading after content is loaded
@@ -32,33 +33,70 @@
                     .then(data => {
                         if (data.is_updating) {
                             loadingIndicator.style.display = 'inline-block'; // Show loading indicator
+                            anUpdateWasStarted = true; // Mark that an update is (or was) in progress
                         } else {
                             loadingIndicator.style.display = 'none'; // Hide loading indicator
-                            clearInterval(updateInterval); // Stop polling when update is complete
-                            // Optionally, refresh the page or update content here
-                            // For now, just hide the indicator and stop polling
+                            if (anUpdateWasStarted) {
+                                // If an update was started and is now complete, reload the page
+                                window.location.reload();
+                                anUpdateWasStarted = false; // Reset flag after reload is triggered
+                            }
+                            if (updateInterval) {
+                                clearInterval(updateInterval); // Stop polling
+                                updateInterval = null;
+                            }
                         }
                     })
                     .catch(error => {
                         console.error('Error fetching update status:', error);
                         loadingIndicator.style.display = 'none'; // Hide on error
-                        clearInterval(updateInterval); // Stop polling on error
+                        if (updateInterval) {
+                            clearInterval(updateInterval); // Stop polling on error
+                            updateInterval = null;
+                        }
+                        anUpdateWasStarted = false; // Reset flag on error
                     });
             }
 
-            // Check status initially and then poll periodically
-            checkUpdateStatus(); // Check status on page load
-            updateInterval = setInterval(checkUpdateStatus, 2000); // Poll every 2 seconds and store interval ID
+            // Function to start polling
+            function startPolling() {
+                if (updateInterval === null) { // Only start if not already polling
+                    checkUpdateStatus(); // Check immediately
+                    updateInterval = setInterval(checkUpdateStatus, 3000); // Poll every 3 seconds
+                }
+            }
 
-            // Show loading indicator immediately when refresh button is clicked
-            if (refreshButton && loadingIndicator) {
-                refreshButton.addEventListener('click', function() {
-                    loadingIndicator.style.display = 'inline-block';
-                    // Restart polling if it was stopped
-                    if (!updateInterval) {
-                         updateInterval = setInterval(checkUpdateStatus, 2000);
+            // Check status on page load to see if an update is already running from a previous session/tab
+            // If an update is running, we want to reflect that and potentially reload when it's done.
+            fetch('/update-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.is_updating) {
+                        anUpdateWasStarted = true; // An update is in progress
+                        loadingIndicator.style.display = 'inline-block';
+                        startPolling(); // Start polling if an update is already in progress
                     }
+                }).catch(error => console.error('Initial status check failed:', error));
+
+
+            // Handle the "Refresh Listings" button click
+            if (refreshButton && loadingIndicator) {
+                refreshButton.addEventListener('click', function(event) {
+                    // We don't preventDefault, let the link navigation to /update-jobs happen.
+                    // The server will redirect back, and the flash message logic (if any) or this polling will handle UI.
+                    loadingIndicator.style.display = 'inline-block'; // Show loading indicator immediately
+                    anUpdateWasStarted = true; // Mark that the user initiated an update
+                    startPolling(); // Ensure polling starts
                 });
+            }
+
+            // Check for flash messages that might indicate an update has started
+            // This is an alternative way to trigger polling if the server sends a specific message.
+            const flashMessages = document.querySelectorAll('.flash-message.update-started'); // Example class
+            if (flashMessages.length > 0) {
+                anUpdateWasStarted = true;
+                loadingIndicator.style.display = 'inline-block';
+                startPolling();
             }
         });
     </script>
