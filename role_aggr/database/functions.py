@@ -1,8 +1,10 @@
 import os
 import csv
 from sqlalchemy.exc import IntegrityError
-from database.model import SessionLocal, Listing, Company, JobBoard, Base, engine
-from environment import DATABASE_DIR, DATABASE_FILE, CSV_FILE_PATH
+from role_aggr.database.model import SessionLocal, Listing, Company, JobBoard, Base, engine
+from role_aggr.environment import DATABASE_DIR, DATABASE_FILE, CSV_FILE_PATH
+from datetime import datetime as dt
+from role_aggr.scraper.utils import parse_date
 
 def get_db():
     """Dependency to get a database session."""
@@ -203,3 +205,67 @@ def update_job_boards(csv_file=CSV_FILE_PATH):
         print(f"An error occurred during job board update: {e}")
     finally:
         db_session.close()
+# --- Database Helper ---
+
+def _add_listing_to_db(db, listing_data: dict):
+    """Helper to create/add Listing, handling duplicates and validation."""
+    if 'date_posted' in listing_data and not isinstance(listing_data['date_posted'], dt):
+        # This should ideally be handled by parse_date returning datetime objects
+        # but keeping the check as a safeguard.
+        # print(f"Warning: date_posted not datetime for {listing_data.get('link')}. Type: {type(listing_data['date_posted'])}")
+        listing_data['date_posted'] = parse_date(str(listing_data.get('date_posted')))
+
+    if not all(listing_data.get(k) for k in ['title', 'link']):
+        # print(f"Skipping listing due to missing title or link: {listing_data.get('title')}, {listing_data.get('link')}")
+        return False
+
+    company_name = None
+    company_id = listing_data.get('company_id')
+
+    if not company_id and 'job_board_id' in listing_data:
+        job_board = db.query(JobBoard).get(listing_data['job_board_id'])
+        if job_board and job_board.company:
+            company_id = job_board.company.id
+            company_name = job_board.company.name # Get name for consistency if ID is found
+
+    if not company_id and 'company_name' in listing_data and listing_data['company_name']:
+        company_name = listing_data['company_name']
+    
+    if company_name and not company_id:
+        company = db.query(Company).filter(Company.name.ilike(company_name)).first()
+        if not company:
+            print(f"Creating new company: {company_name}")
+            company = Company(name=company_name)
+            db.add(company)
+            db.flush() # Flush to get the new ID
+        company_id = company.id
+    
+    if company_id:
+        listing_data['company_id'] = company_id
+    else:
+        # print(f"Warning: No company_id for listing '{listing_data.get('title')}' on board {listing_data.get('job_board_id')}. Skipping.")
+        return False
+    
+    max_title_len = 255 # Could be a config value
+    if len(listing_data['title']) > max_title_len:
+        listing_data['title'] = listing_data['title'][:max_title_len]
+    
+    existing = db.query(Listing.id).filter_by(link=listing_data['link']).first()
+    if existing:
+        return False
+    
+    if 'company_name' in listing_data: # Not part of Listing model, remove before **
+        del listing_data['company_name']
+
+    try:
+        listing = Listing(**listing_data)
+        db.add(listing)
+        return True
+    except IntegrityError: # Should be rare if link check is effective
+        db.rollback()
+        # print(f"Integrity error adding listing (likely duplicate despite check): {listing_data.get('link')}")
+        return False
+    except Exception as e:
+        db.rollback()
+        # print(f"Error creating listing object for {listing_data.get('link')}: {e}")
+        return False
