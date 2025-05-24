@@ -44,7 +44,7 @@ if _project_root_alt not in sys.path:
 # Database imports
 try:
     from database.model import SessionLocal, Listing, Company
-    from database.functions import init_db, load_job_boards_from_csv, update_job_boards, DATABASE_FILE
+    from database.functions import init_db, update_job_boards, DATABASE_FILE
 except ImportError:
     import sys
     # If run directly, __file__ is app.py. os.path.dirname gives role_aggr.
@@ -54,7 +54,7 @@ except ImportError:
         sys.path.insert(0, project_root)
     # Attempt imports again after path modification
     from database.model import SessionLocal, Listing, Company
-    from database.functions import init_db, load_job_boards_from_csv, update_job_boards, DATABASE_FILE
+    from database.functions import init_db, update_job_boards, DATABASE_FILE
 
 
 # Scraper update function import
@@ -203,13 +203,10 @@ if __name__ == '__main__':
     if not os.path.exists(DATABASE_FILE):
         logging.info("Database does not exist. Creating and initializing...")
         init_db()
-        db = SessionLocal()
-        load_job_boards_from_csv(db)
-        db.close()
         logging.info("Database created and initialized.")
-    else:
-        logging.info("Database exists. Updating job boards...")
-        update_job_boards()
-        logging.info("Job boards updated.")
+        
+    logging.info("Updating job boards...")
+    update_job_boards()
+    logging.info("Job boards updated.")
     
     app.run(debug=True, use_reloader=False)

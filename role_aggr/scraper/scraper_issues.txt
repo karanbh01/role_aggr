@@ -1,0 +1,6 @@
+workday:
+- dates not picked up for: Fidelity, Barings, Blackstone
+- location not picked up for: Fidelity
+- fix 2 locations, 3 locations, etc 
+- mappings for location (?) 
+- how to parse "posted 30+ days ago"
