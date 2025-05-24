@@ -1,54 +1,53 @@
-﻿Name,Type,Sector,Link
-LinkedIn,Aggregate,Agg,https://www.linkedin.com/jobs/
-Indeed,Aggregate,Agg,https://uk.indeed.com/
-eFinancialCareers,Aggregate,Agg,https://www.efinancialcareers.co.uk/jobs/in-london%2C-uk?location=London%2C+UK&latitude=51.50721&longitude=-0.12758&countryCode=GB&locationPrecision=City&radius=40&radiusUnit=km&pageSize=15&currencyCode=GBP&language=en&includeUnspecifiedSalary=true
-Deutsche Bank,Company,Sell-Side,https://db.wd3.myworkdayjobs.com/en-US/DBWebsite?Country=29247e57dbaf46fb855b224e03170bc7
-Capital Group,Company,Buy-Side,https://capgroup.wd1.myworkdayjobs.com/en-GB/capitalgroupcareers?locations=998fe582cba510106168c8c231300000
-Neuberger Berman,Company,Buy-Side,https://nb.wd1.myworkdayjobs.com/NBCareers?locations=0c6af06679b4012c714901a28e49b060
-PIMCO,Company,Buy-Side,https://pimco.wd1.myworkdayjobs.com/en-US/pimco-careers?locationCountry=29247e57dbaf46fb855b224e03170bc7&locations=c3a960b7b21f10016312adea6fcd0000
-Insight Investment,Company,Buy-Side,https://www.insightinvestment.com/uk/nav/careers/vacancies/
-Schroders,Company,Buy-Side,https://schroders.referrals.selectminds.com/careers/jobs/search/3999639
-Prudential / PGIM,Company,Buy-Side,https://pru.wd5.myworkdayjobs.com/en-US/Careers/?locationCountry=29247e57dbaf46fb855b224e03170bc7
-Aberdeen,Company,Buy-Side,https://abrdn.wd3.myworkdayjobs.com/abrdn?locationCountry=29247e57dbaf46fb855b224e03170bc7
-Janus Henderson,Company,Buy-Side,https://jobs.janushenderson.com/search/?createNewAlert=false&q=&optionsFacetsDD_customfield3=London&optionsFacetsDD_country=&optionsFacetsDD_department=
-M&G,Company,Buy-Side,https://mgpru.wd3.myworkdayjobs.com/mandgprudential?locations=4754e8be5c2a014172262e61de4f816b
-Aviva,Company,Buy-Side,https://aviva.wd1.myworkdayjobs.com/Aviva_Investors_External?locations=ffa161f517d11024fc25a8572b00e1c0
-Ninety One,Company,Buy-Side,https://externalcareers.ninetyone.com/experienced-hires/index.html?searchCriteria%5b0%5d%5bkey%5d=LOV10&searchCriteria%5b0%5d%5bvalues%5d%5b%5d=10948&searchCriteria%5b1%5d%5bkey%5d=Resultsperpage&searchCriteria%5b1%5d%5bvalues%5d%5b%5d=10
-Invesco,Company,Buy-Side,https://invesco.wd1.myworkdayjobs.com/en-GB/IVZ
-Jupiter AM,Company,Buy-Side,https://jupiteram.wd3.myworkdayjobs.com/jupiter_careers
-Newtom IM,Company,Buy-Side,https://bnymellon.eightfold.ai/careers?query=Newton&start=0&pid=25978847&sort_by=solr
-Blackrock,Company,Buy-Side,https://blackrock.wd1.myworkdayjobs.com/en-US/BlackRock_Professional?locations=131d7f8fcf9f013542e48f95f7503fcf&locations=131d7f8fcf9f01c8d6145e57f75064cd
-UBS,Company,Buy-Side,https://jobs.ubs.com/TGnewUI/Search/Home/Home?partnerid=25008&siteid=5012
-State Street,Company,Buy-Side,https://statestreet.wd1.myworkdayjobs.com/Global?locations=8c182d98fcf801d8afa08d2f1244f962&locations=8c182d98fcf801031a9f889f11448a58
-Fidelity,Company,Buy-Side,https://fil.wd3.myworkdayjobs.com/en-US/001?locationCountry=29247e57dbaf46fb855b224e03170bc7
-JP Morgan,Company,Sell-Side,https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs?location=LONDON%2C+United+Kingdom&locationId=300000057005324&locationLevel=state&mode=location
-Morgan Stanley,Company,Sell-Side,https://ms.wd5.myworkdayjobs.com/en-US/External/jobs?src=Eightfold&locations=5a72a211d621102a18cd9b01d6dd28a8&locations=fe69eef7498e10014f58448734310000
-Goldman Sachs,Company,Sell-Side,https://higher.gs.com/results?LOCATION=London&page=1&sort=RELEVANCE
-Barclays,Company,Sell-Side,https://barclays.wd3.myworkdayjobs.com/en-US/External_Career_Site_Barclays?locations=1ab48a98eb7c1001633eb0711e740000&locations=112c054282011001636f2041ca230000
-BofA,Company,Sell-Side,https://ghr.wd1.myworkdayjobs.com/en-US/lateral-emea?locations=13a0897a1ccc1039061a94388749c25e&locations=13a0897a1ccc1039061a948533f6c264&locations=13a0897a1ccc1039061a93c27547c258
-Nomura,Company,Sell-Side,https://careers.nomura.com/Nomura/go/Career-Opportunities-Europe/9051100/
-Baillie Gifford,Company,Buy-Side,https://bailliegifford.wd3.myworkdayjobs.com/BaillieGiffordCareers
-Allianz GI,Company,Buy-Side,https://careers.allianz.com/global/search?searchby=location&createNewAlert=false&q=&locationsearch=London&optionsFacetsDD_department=Asset%20%26%20Investment%20Management&optionsFacetsDD_shifttype=&optionsFacetsDD_customfield3=&optionsFacetsDD_customfield2=&optionsFacetsDD_facility=&optionsFacetsDD_customfield4=&optionsFacetsDD_dept=&inputSearchValue=London&quatFlag=false
-T. Rowe Price,Company,Buy-Side,https://troweprice.wd5.myworkdayjobs.com/TRowePriceInternational/jobs?locations=0502b9cdc12e10010e49bf3d20220000
-Columbia Threadneedle,Company,Buy-Side,https://careers.ameriprise.com/search-jobs/?search=&location=London&brand=Columbia+Threadneedle+Investments&pagesize=20
-Franklin Templeton,Company,Buy-Side,https://franklintempleton.wd5.myworkdayjobs.com/Primary-External-1?locations=82ac4783555d0142f5492e3dac00e930
-Aegon Asset Management,Company,Buy-Side,https://transamerica.wd5.myworkdayjobs.com/AUK_JobSite
-Sarasin & Partners LLP,Company,Buy-Side,https://sarasinandpartners.com/join/
-Barings,Company,Buy-Side,https://barings.wd1.myworkdayjobs.com/Barings?locationCountry=29247e57dbaf46fb855b224e03170bc7
-GAM,Company,Buy-Side,https://gam.wd3.myworkdayjobs.com/GAM
-Amundi,Company,Buy-Side,https://jobs.amundi.com/pages/offre/listeoffre.aspx?lcid=2057&facet_Country=162&showSearchUrl=1
-Wellington Management,Company,Buy-Side,https://wellington.wd5.myworkdayjobs.com/en-GB/External?locations=26304b0c664210569c1104658a81b7c9
-Nuveen,Company,Buy-Side,https://careers.tiaa.org/jobs?keyword=nuveen&location_name=london&location_type=1
-Nordea,Company,Buy-Side,https://careers.nordea.com/search/?createNewAlert=false&q=&locationsearch=&optionsFacetsDD_customfield2=
-SEI Investments,Company,Buy-Side,https://careers.seic.com/global/en/c/investment-management-jobs
-AXA Group,Company,Buy-Side,https://careers.axa.com/global/en/search-results
-Blackstone,Company,Buy-Side,https://blackstone.wd1.myworkdayjobs.com/Blackstone_Careers?locations=ef375a2335bb019369c586065e1f3d2b&locations=ef375a2335bb010443fbb6065e1f832b
-RBC,Company,Sell-Side,https://rbc.wd3.myworkdayjobs.com/RBCGLOBAL1/?Country=29247e57dbaf46fb855b224e03170bc7
-Alliance Bernstein,Company,Buy-Side,https://abglobal.wd1.myworkdayjobs.com/alliancebernsteincareers?locationCountry=29247e57dbaf46fb855b224e03170bc7
-HSBC,Company,Sell-Side,https://portal.careers.hsbc.com/careers?pid=563774599659705&location=London%2C%20England%2C%20United%20Kingdom&triggerGoButton=false&triggerGoButton=true
-Dimensional,Company,Buy-Side,https://dimensional.wd5.myworkdayjobs.com/DFA_Careers?locations=b5337b8356eb10df7d018f3527a48119
-Lazard,Company,Buy-Side,https://lazard-careers.tal.net/vx/lang-en-GB/mobile-0/appcentre-ext/brand-4/candidate/jobboard/vacancy/3/adv/?f_Item_Opportunity_84825_lk=765&f_Item_Opportunity_133529_lk=519871
-Pictet,Company,Buy-Side,https://career012.successfactors.eu/career?company=banquepict&career%5fns=job%5flisting%5fsummary&navBarLevel=JOB%5fSEARCH&_s.crb=02qxj6RS1RinWizgcCz4%2ffPXb%2b4UnE7Xj7ppgRV3dRo%3d
-Robeco,Company,Buy-Side,https://robeco.wd3.myworkdayjobs.com/en-US/robecoexternalcareers/?locations=be8f81efa992012d5a2d86babd00db15
-Capula IM,Company,Buy-Side,https://apply.workable.com/capula-investment-management-ltd/
-,,,
+﻿Name,Type,Sector,Link,Platform
+LinkedIn,Aggregate,Agg,https://www.linkedin.com/jobs/,LinkedIn
+Indeed,Aggregate,Agg,https://uk.indeed.com/,Indeed
+eFinancialCareers,Aggregate,Agg,https://www.efinancialcareers.co.uk/jobs/,eFinancialCareers
+Deutsche Bank,Company,Sell-Side,https://db.wd3.myworkdayjobs.com/en-US/DBWebsite,Workday
+Capital Group,Company,Buy-Side,https://capgroup.wd1.myworkdayjobs.com/en-GB/capitalgroupcareers,Workday
+Neuberger Berman,Company,Buy-Side,https://nb.wd1.myworkdayjobs.com/NBCareers,Workday
+PIMCO,Company,Buy-Side,https://pimco.wd1.myworkdayjobs.com/en-US/pimco-careers,Workday
+Insight Investment,Company,Buy-Side,https://www.insightinvestment.com/uk/nav/careers/vacancies/,Proprietary
+Schroders,Company,Buy-Side,https://ekbq.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2/jobs,Oracle
+Prudential / PGIM,Company,Buy-Side,https://pru.wd5.myworkdayjobs.com/en-US/Careers,Workday
+Aberdeen,Company,Buy-Side,https://abrdn.wd3.myworkdayjobs.com/abrdn,Workday
+Janus Henderson,Company,Buy-Side,https://jobs.janushenderson.com/search/,Successfactors
+M&G,Company,Buy-Side,https://mgpru.wd3.myworkdayjobs.com/mandgprudential,Workday
+Aviva,Company,Buy-Side,https://aviva.wd1.myworkdayjobs.com/Aviva_Investors_External,Workday
+Ninety One,Company,Buy-Side,https://externalcareers.ninetyone.com/experienced-hires/index.html,Proprietary
+Invesco,Company,Buy-Side,https://invesco.wd1.myworkdayjobs.com/en-GB/IVZ,Workday
+Jupiter AM,Company,Buy-Side,https://jupiteram.wd3.myworkdayjobs.com/jupiter_careers,Workday
+Newtom IM,Company,Buy-Side,https://bnymellon.eightfold.ai/careers?query=Newton&start=0&pid=26891050&sort_by=timestamp,Eightfold
+Blackrock,Company,Buy-Side,https://blackrock.wd1.myworkdayjobs.com/en-US/BlackRock_Professional,Workday
+UBS,Company,Buy-Side,https://jobs.ubs.com/TGnewUI/Search/Home/Home?partnerid=25008&siteid=5012,Proprietary
+State Street,Company,Buy-Side,https://statestreet.wd1.myworkdayjobs.com/Global,Workday
+Fidelity,Company,Buy-Side,https://fil.wd3.myworkdayjobs.com/en-US/001,Workday
+JP Morgan,Company,Sell-Side,https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs,Oracle
+Morgan Stanley,Company,Sell-Side,https://ms.wd5.myworkdayjobs.com/en-US/External/jobs,Workday
+Goldman Sachs,Company,Sell-Side,https://higher.gs.com/results?&page=1&sort=RELEVANCE,Oracle
+Barclays,Company,Sell-Side,https://barclays.wd3.myworkdayjobs.com/en-US/External_Career_Site_Barclays,Workday
+BofA,Company,Sell-Side,https://ghr.wd1.myworkdayjobs.com/en-US/lateral-emea,Workday
+Nomura,Company,Sell-Side,https://careers.nomura.com/Nomura/go/Career-Opportunities-Europe/9051100/,Successfactors
+Baillie Gifford,Company,Buy-Side,https://bailliegifford.wd3.myworkdayjobs.com/BaillieGiffordCareers,Workday
+Allianz GI,Company,Buy-Side,https://careers.allianz.com/global/search?searchby=location&createNewAlert=false&q=&locationsearch=&optionsFacetsDD_department=Asset%20%26%20Investment%20Management&optionsFacetsDD_shifttype=&optionsFacetsDD_customfield3=&optionsFacetsDD_customfield2=&optionsFacetsDD_facility=&optionsFacetsDD_customfield4=&optionsFacetsDD_dept=&inputSearchValue=&quatFlag=false,Successfactors
+T. Rowe Price,Company,Buy-Side,https://troweprice.wd5.myworkdayjobs.com/TRowePriceInternational/jobs,Workday
+Columbia Threadneedle,Company,Buy-Side,https://ameriprise.wd5.myworkdayjobs.com/en-GB/Ameriprise,Workday
+Franklin Templeton,Company,Buy-Side,https://franklintempleton.wd5.myworkdayjobs.com/Primary-External-1,Workday
+Aegon Asset Management,Company,Buy-Side,https://transamerica.wd5.myworkdayjobs.com/AUK_JobSite,Workday
+Sarasin & Partners LLP,Company,Buy-Side,https://sarasinandpartners.com/join/,Proprietary
+Barings,Company,Buy-Side,https://barings.wd1.myworkdayjobs.com/Barings,Workday
+GAM,Company,Buy-Side,https://gam.wd3.myworkdayjobs.com/GAM,Workday
+Amundi,Company,Buy-Side,https://jobs.amundi.com/job/list-of-jobs.aspx,Proprietary
+Wellington Management,Company,Buy-Side,https://wellington.wd5.myworkdayjobs.com/en-GB/External,Workday
+Nuveen,Company,Buy-Side,https://tiaa.wd1.myworkdayjobs.com/en-US/Search,Workday
+Nordea,Company,Buy-Side,https://careers.nordea.com/search,Successfactors
+SEI Investments,Company,Buy-Side,https://seic.wd1.myworkdayjobs.com/en-US/SEI_Global_Services,Workday
+AXA Group,Company,Buy-Side,https://jobs.axa/careersection/1/moresearch.ftl?lang=en,Proprietary
+Blackstone,Company,Buy-Side,https://blackstone.wd1.myworkdayjobs.com/Blackstone_Careers,Workday
+RBC,Company,Sell-Side,https://rbc.wd3.myworkdayjobs.com/RBCGLOBAL1,Workday
+Alliance Bernstein,Company,Buy-Side,https://abglobal.wd1.myworkdayjobs.com/alliancebernsteincareers,Workday
+HSBC,Company,Sell-Side,https://portal.careers.hsbc.com/careers,Successfactors
+Dimensional,Company,Buy-Side,https://dimensional.wd5.myworkdayjobs.com/DFA_Careers,Workday
+Lazard,Company,Buy-Side,https://lazard-careers.tal.net/vx/lang-en-GB/mobile-0/appcentre-ext/brand-4/candidate/jobboard/vacancy/3/adv/,Taleo
+Pictet,Company,Buy-Side,https://career012.successfactors.eu/career?company=banquepict&career%5fns=job%5flisting%5fsummary&navBarLevel=JOB%5fSEARCH&_s.crb=02qxj6RS1RinWizgcCz4%2ffPXb%2b4UnE7Xj7ppgRV3dRo%3d,Successfactors
+Robeco,Company,Buy-Side,https://robeco.wd3.myworkdayjobs.com/en-US/robecoexternalcareers,Workday
+Capula IM,Company,Buy-Side,https://apply.workable.com/capula-investment-management-ltd/,Workable
