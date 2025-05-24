@@ -240,20 +240,25 @@ async def scraper(company_name, target_url):
 
         await browser.close()
 
-def main():
-    job_boards = get_job_boards()
-    platform_job_boards = {platform: [{'company_name': board.company.name if board.company else None,
-                                       'job_board_url': board.link} 
-                                      for board in job_boards if board.platform == platform]
-                           for platform in {board.platform for board in job_boards}}
+def main(test=False):
+    if test:
+        print(f"[Test Mode] Scraping BofA at {TARGET_URL}")
+        asyncio.run(scraper("BofA", TARGET_URL))
+    else:
+        job_boards = get_job_boards()
+        platform_job_boards = {platform: [{'company_name': board.company.name if board.company else None,
+                                        'job_board_url': board.link} 
+                                        for board in job_boards if board.platform == platform]
+                            for platform in {board.platform for board in job_boards}}
 
-    for platform, boards in platform_job_boards.items():
-        if platform == "Workday":
-            for board_dict in boards:
-                company_name = board_dict['company_name']
-                target_url = board_dict['job_board_url']        
-                print(f"Scraping {board_dict['company_name'] if board_dict['company_name'] else platform} at {target_url}")
-                asyncio.run(scraper(company_name, target_url))
+        for platform, boards in platform_job_boards.items():
+            if platform == "Workday":
+                for board_dict in boards:
+                    company_name = board_dict['company_name']
+                    target_url = board_dict['job_board_url']        
+                    
+                    print(f"Scraping {board_dict['company_name'] if board_dict['company_name'] else platform} at {target_url}")
+                    asyncio.run(scraper(company_name, target_url))
 
 if __name__ == "__main__":
-    main()
+    main(test=True)  # Set to True for testing, False for full run
