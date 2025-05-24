@@ -15,3 +15,8 @@ JOB_POSTED_DATE_SELECTOR = "dd[data-automation-id='postedOn']" # Common, but mig
 # For job detail page
 JOB_DESCRIPTION_SELECTOR = "div[data-automation-id='jobPostingDescription']" # Common for description block
 JOB_ID_DETAIL_SELECTOR = "span[data-automation-id='jobPostingJobId']" # Job ID on detail page
+
+# Pagination selectors
+PAGINATION_CONTAINER_SELECTOR = "nav[aria-label='pagination']"
+NEXT_PAGE_BUTTON_SELECTOR = "button[aria-label='next']"
+PAGE_NUMBER_SELECTOR = "button[data-uxi-query-id='paginationPageButton']"

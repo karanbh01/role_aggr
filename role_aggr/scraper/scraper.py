@@ -12,6 +12,8 @@ from config import (
     JOB_POSTED_DATE_SELECTOR,
     JOB_DESCRIPTION_SELECTOR,
     JOB_ID_DETAIL_SELECTOR,
+    NEXT_PAGE_BUTTON_SELECTOR,
+    PAGINATION_CONTAINER_SELECTOR
 )
 
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -76,6 +78,86 @@ async def initialize_playwright_browser(p,
         return None, None # Return None for page and browser on error
     return page, browser
 
+async def check_pagination_exists(page):
+    """Checks if pagination controls are present on the page."""
+    try:
+        await page.wait_for_selector(PAGINATION_CONTAINER_SELECTOR, timeout=5000)
+        print("Pagination controls found.")
+        return True
+    except PlaywrightTimeoutError:
+        print("No pagination controls found.")
+        return False
+
+async def navigate_to_next_page(page):
+    """Navigates to the next page using the next page button."""
+    try:
+        next_button = await page.query_selector(NEXT_PAGE_BUTTON_SELECTOR)
+        if next_button and not await next_button.is_disabled():
+            print("Navigating to the next page...")
+            await next_button.click()
+            await page.wait_for_load_state("networkidle", timeout=30000)
+            print("Successfully navigated to the next page.")
+            return True
+        else:
+            print("Next page button not found or is disabled.")
+            return False
+    except PlaywrightTimeoutError:
+        print("Timeout navigating to the next page.")
+        return False
+    except Exception as e:
+        print(f"Error navigating to the next page: {e}")
+        return False
+
+async def paginate_through_job_listings(page, 
+                                        target_url, 
+                                        max_pages=None):
+    """
+    Controls the pagination process, iterating through pages and accumulating job summaries.
+    """
+    all_job_summaries = []
+    current_page_num = 1
+    
+    while True:
+        print(f"\n--- Processing Page {current_page_num} ---")
+        
+        # First, try to extract jobs directly without scrolling
+        page_job_summaries = await extract_job_summaries(page,
+                                                         JOB_ITEM_SELECTOR,
+                                                         JOB_TITLE_SELECTOR,
+                                                         JOB_POSTED_DATE_SELECTOR,
+                                                         target_url)
+
+        if not page_job_summaries:
+            print("No jobs found initially. Attempting to scroll to load all jobs.")
+            # Scroll to load all jobs on the current page if no jobs were found
+            await scroll_to_load_all_jobs(page, JOB_LIST_SELECTOR, JOB_ITEM_SELECTOR)
+            
+            # Re-extract job summaries after scrolling
+            page_job_summaries = await extract_job_summaries(page,
+                                                             JOB_ITEM_SELECTOR,
+                                                             JOB_TITLE_SELECTOR,
+                                                             JOB_POSTED_DATE_SELECTOR,
+                                                             target_url)
+        all_job_summaries.extend(page_job_summaries)
+        print(f"Total job summaries collected so far: {len(all_job_summaries)}")
+
+        if max_pages and current_page_num >= max_pages:
+            print(f"Reached maximum pages ({max_pages}). Stopping pagination.")
+            break
+
+        if not await check_pagination_exists(page):
+            print("No pagination controls found or end of pagination. Stopping.")
+            break
+
+        if not await navigate_to_next_page(page):
+            print("Could not navigate to the next page. Stopping pagination.")
+            break
+        
+        current_page_num += 1
+        await page.wait_for_timeout(2000) # Wait a bit before processing the next page
+
+    return all_job_summaries
+
 async def scroll_to_load_all_jobs(page, 
                                   job_list_selector, 
                                   job_item_selector, 
@@ -97,12 +179,12 @@ async def scroll_to_load_all_jobs(page,
             if job_list_items_count > previous_job_count:
                 scroll_attempts = 0  # Reset counter if new jobs are found
                 await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                await page.wait_for_timeout(10000)  # Increased wait time for content to load
+                await page.wait_for_timeout(1000)  # Reduced wait time for content to load
             else:
                 scroll_attempts += 1
                 print(f"No new jobs loaded on scroll attempt {scroll_attempts}/{max_scroll_attempts}. Retrying...")
                 await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                await page.wait_for_timeout(5000) # Shorter wait for subsequent attempts
+                await page.wait_for_timeout(1000) # Reduced wait for subsequent attempts
 
             if scroll_attempts >= 5: # Increased threshold for breaking the loop
                 print("No new jobs loaded after multiple scroll attempts. Assuming end of list.")
@@ -193,11 +275,11 @@ async def process_job_details(page,
             all_job_data.append(full_job_info)
             await page.wait_for_timeout(1000)
         else:
-            print(f"Skipping job with no detail URL: {summary['title']}")
+            print(f"Skipping job with no detail URL: {summary['title']}") 
     return all_job_data
 
 def save_job_data_to_csv(all_job_data, 
-                         output_filename="role_aggr/scraper_new/workday_jobs_playwright.csv"):
+                         output_filename="role_aggr/scraper/workday_jobs_playwright.csv"):
     """Saves the extracted job data to a CSV file."""
     print(f"\n--- All Extracted Job Data ({len(all_job_data)} jobs) ---")
     
@@ -218,36 +300,48 @@ def save_job_data_to_csv(all_job_data,
     else:
         print("\nNo job data to save.")
 
-async def scraper(company_name, target_url):
+async def scraper(company_name, target_url, max_pages=None):
+    """
+    Scrapes job listings from a given target URL, including pagination.
+    
+    Args:
+        company_name (str): The name of the company being scraped.
+        target_url (str): The URL of the job board to scrape.
+        max_pages (int, optional): The maximum number of pages to scrape.
+                                   If None, all available pages will be scraped.
+    """
     async with async_playwright() as p:
         page, browser = await initialize_playwright_browser(p, target_url)
         if not page or not browser:
             return
 
-        await scroll_to_load_all_jobs(page, 
-                                      JOB_LIST_SELECTOR, 
-                                      JOB_ITEM_SELECTOR)
-        job_summaries = await extract_job_summaries(page, 
-                                                    JOB_ITEM_SELECTOR, 
-                                                    JOB_TITLE_SELECTOR, 
-                                                    JOB_POSTED_DATE_SELECTOR, 
-                                                    target_url)
-        all_job_data = await process_job_details(page, 
+        job_summaries = await paginate_through_job_listings(page, target_url, max_pages)
+        
+        all_job_data = await process_job_details(page,
                                                  company_name,
-                                                 job_summaries, 
+                                                 job_summaries,
                                                  fetch_job_details)
         save_job_data_to_csv(all_job_data)
 
         await browser.close()
 
-def main(test=False):
+def main(test=False, 
+         max_pages=None):
+    """
+    Main function to run the scraper.
+    
+    Args:
+        test (bool): If True, runs in test mode scraping a predefined URL.
+        max_pages (int, optional): The maximum number of pages to scrape when not in test mode.
+                                   If None, all available pages will be scraped.
+    """
     if test:
         print(f"[Test Mode] Scraping BofA at {TARGET_URL}")
-        asyncio.run(scraper("BofA", TARGET_URL))
+        asyncio.run(scraper("BofA", TARGET_URL, max_pages=max_pages))
     else:
         job_boards = get_job_boards()
         platform_job_boards = {platform: [{'company_name': board.company.name if board.company else None,
-                                        'job_board_url': board.link} 
+                                        'job_board_url': board.link}
                                         for board in job_boards if board.platform == platform]
                             for platform in {board.platform for board in job_boards}}
 
@@ -255,10 +349,10 @@ def main(test=False):
             if platform == "Workday":
                 for board_dict in boards:
                     company_name = board_dict['company_name']
-                    target_url = board_dict['job_board_url']        
+                    target_url = board_dict['job_board_url']
                     
                     print(f"Scraping {board_dict['company_name'] if board_dict['company_name'] else platform} at {target_url}")
-                    asyncio.run(scraper(company_name, target_url))
+                    asyncio.run(scraper(company_name, target_url, max_pages=max_pages))
 
 if __name__ == "__main__":
     main(test=True)  # Set to True for testing, False for full run
