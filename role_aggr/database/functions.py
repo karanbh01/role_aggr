@@ -1,14 +1,20 @@
 import os
 import csv
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from role_aggr.database.model import SessionLocal, Listing, Company, JobBoard, Base, engine
 from role_aggr.environment import DATABASE_DIR, DATABASE_FILE, CSV_FILE_PATH
 from datetime import datetime as dt
-from role_aggr.scraper.utils import parse_date
+import pandas as pd
+#from role_aggr.scraper.utils import parse_date
+
+## main functions: ##
 
 def get_db():
     """Dependency to get a database session."""
+    
     db = SessionLocal()
+    
     try:
         yield db
     finally:
@@ -16,74 +22,14 @@ def get_db():
 
 def init_db():
     """Creates the database tables."""
+    
     print(f"Initializing database at: {DATABASE_FILE}")
+    
     # Create the database directory if it doesn't exist
     os.makedirs(DATABASE_DIR, exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    
     print("Database tables created.")
-
-def load_job_boards_from_csv(db_session, csv_file=CSV_FILE_PATH):
-    """Loads job boards and companies from the CSV file into the database."""
-    print(f"Loading data from CSV: {csv_file}")
-    try:
-        with open(csv_file, 'r', encoding='utf-8-sig') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                company_name = row['Name']
-                job_board_type = row['Type']
-                sector = row['Sector']
-                link = row['Link']
-
-                company = None
-                if job_board_type == 'Company':
-                    # Check if company already exists
-                    company = db_session.query(Company).filter_by(name=company_name).first()
-                    if not company:
-                        # Create new company
-                        company = Company(name=company_name, sector=sector)
-                        db_session.add(company)
-                        try:
-                            db_session.flush() # Assign ID to company before using it
-                            print(f"Added Company: {company_name}")
-                        except IntegrityError:
-                            db_session.rollback()
-                            print(f"Company '{company_name}' already exists (concurrent add?). Fetching existing.")
-                            company = db_session.query(Company).filter_by(name=company_name).first()
-                        except Exception as e:
-                            db_session.rollback()
-                            print(f"Error adding company {company_name}: {e}")
-                            continue
-
-                # Check if job board already exists by link
-                job_board = db_session.query(JobBoard).filter_by(link=link).first()
-                if not job_board:
-                    # Create new job board
-                    job_board = JobBoard(
-                        name=company_name, # Use company name as job board name for consistency
-                        type=job_board_type,
-                        link=link,
-                        company_id=company.id if company else None
-                    )
-                    db_session.add(job_board)
-                    try:
-                        db_session.flush()
-                        print(f"Added Job Board: {company_name} ({link})")
-                    except IntegrityError:
-                        db_session.rollback()
-                        print(f"Job Board with link '{link}' already exists (concurrent add?). Skipping.")
-                    except Exception as e:
-                        db_session.rollback()
-                        print(f"Error adding job board {company_name} ({link}): {e}")
-
-            db_session.commit()
-            print("Finished loading data from CSV.")
-
-    except FileNotFoundError:
-        print(f"Error: CSV file not found at {csv_file}")
-    except Exception as e:
-        db_session.rollback()
-        print(f"An error occurred during CSV loading: {e}")
-
 
 def update_job_boards(csv_file=CSV_FILE_PATH):
     """
@@ -91,113 +37,11 @@ def update_job_boards(csv_file=CSV_FILE_PATH):
     If a job board exists, updates its properties.
     If it doesn't exist, creates a new job board.
     """
+    
     print(f"Updating job boards from CSV: {csv_file}")
-    print(f"CSV file exists: {os.path.exists(csv_file)}")
     db_session = SessionLocal()
     try:
-        with open(csv_file, 'r', encoding='utf-8-sig') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                company_name = row['Name']
-                job_board_type = row['Type']
-                sector = row['Sector']
-                link = row['Link']
-
-                try:
-                    # First, check if the job board exists
-                    job_board = db_session.query(JobBoard).filter_by(link=link).first()
-                    
-                    # If job board exists, we need to handle company updates differently
-                    if job_board:
-                        # Update existing job board
-                        print(f"Updating Job Board: {company_name} ({link})")
-                        old_name = job_board.name
-                        job_board.name = company_name
-                        job_board.type = job_board_type
-                        
-                        # If it's a company job board, handle company update
-                        if job_board_type == 'Company':
-                            # If the company name changed, we need to update the company or link to a different one
-                            if job_board.company and job_board.company.name != company_name:
-                                # Check if a company with the new name already exists
-                                new_company = db_session.query(Company).filter_by(name=company_name).first()
-                                if new_company:
-                                    # Link to existing company with new name
-                                    job_board.company_id = new_company.id
-                                else:
-                                    # Update the existing company's name
-                                    job_board.company.name = company_name
-                                    job_board.company.sector = sector
-                                    print(f"Updated Company: {old_name} -> {company_name}")
-                            elif job_board.company:
-                                # Update sector if needed
-                                if job_board.company.sector != sector:
-                                    job_board.company.sector = sector
-                                    print(f"Updated Company sector: {company_name}")
-                            else:
-                                # No company linked, create one
-                                company = Company(name=company_name, sector=sector)
-                                db_session.add(company)
-                                try:
-                                    db_session.flush()
-                                    print(f"Added Company: {company_name}")
-                                except IntegrityError:
-                                    db_session.rollback()
-                                    print(f"Company '{company_name}' already exists (concurrent add?). Fetching existing.")
-                                    company = db_session.query(Company).filter_by(name=company_name).first()
-                                job_board.company_id = company.id
-                    else:
-                        # Create new job board and possibly new company
-                        company = None
-                        if job_board_type == 'Company':
-                            # Check if company already exists
-                            company = db_session.query(Company).filter_by(name=company_name).first()
-                            if not company:
-                                # Create new company
-                                company = Company(name=company_name, sector=sector)
-                                db_session.add(company)
-                                try:
-                                    db_session.flush()  # Assign ID to company before using it
-                                    print(f"Added Company: {company_name}")
-                                except IntegrityError:
-                                    db_session.rollback()
-                                    print(f"Company '{company_name}' already exists (concurrent add?). Fetching existing.")
-                                    company = db_session.query(Company).filter_by(name=company_name).first()
-                                except Exception as e:
-                                    db_session.rollback()
-                                    print(f"Error adding company {company_name}: {e}")
-                                    continue
-                        
-                        # Create new job board
-                        job_board = JobBoard(
-                            name=company_name,
-                            type=job_board_type,
-                            link=link,
-                            company_id=company.id if company else None
-                        )
-                        db_session.add(job_board)
-                        try:
-                            db_session.flush()
-                            print(f"Added Job Board: {company_name} ({link})")
-                        except IntegrityError:
-                            db_session.rollback()
-                            print(f"Job Board with link '{link}' already exists (concurrent add?). Skipping.")
-                            # Re-fetch the job board to update it instead
-                            job_board = db_session.query(JobBoard).filter_by(link=link).first()
-                            if job_board:
-                                job_board.name = company_name
-                                job_board.type = job_board_type
-                                if company:
-                                    job_board.company_id = company.id
-                
-                except Exception as e:
-                    # Handle exceptions for individual rows without failing the entire process
-                    print(f"Error processing job board {company_name} ({link}): {e}")
-                    # Continue with the next row
-            
-            # Commit all successful changes
-            db_session.commit()
-            print("Finished updating job boards from CSV.")
+        _process_job_board(csv_file, db_session)
     except FileNotFoundError:
         print(f"Error: CSV file not found at {csv_file}")
     except Exception as e:
@@ -205,67 +49,249 @@ def update_job_boards(csv_file=CSV_FILE_PATH):
         print(f"An error occurred during job board update: {e}")
     finally:
         db_session.close()
+
+def get_job_boards(dataframe=False) -> list | pd.DataFrame:
+    """Fetches all job boards from the database."""
+    
+    db_session = SessionLocal()
+    
+    try:
+        query = db_session.query(JobBoard).options(joinedload(JobBoard.company))
+    
+        if dataframe:
+            job_boards = pd.read_sql(query.statement, query.session.bind)
+        else:
+            job_boards = query.all()
+            
+        return job_boards
+    
+    except Exception as e:
+        print(f"Error fetching job boards: {e}")
+        return []
+    finally:
+        db_session.close()
+
+
+## helper functions: ##
+
+def _get_or_create_company(db_session, 
+                           company_name: str, 
+                           sector: str) -> Company:
+    """Gets an existing company or creates a new one."""
+    company = db_session.query(Company).filter_by(name=company_name).first()
+    if company:
+        return company
+
+    # Create new company
+    company = Company(name=company_name, sector=sector)
+    db_session.add(company)
+    try:
+        db_session.flush()  # Assign ID to company before using it
+        print(f"Added Company: {company_name}")
+        return company
+    except IntegrityError:
+        db_session.rollback()
+        print(f"Company '{company_name}' already exists (concurrent add?). Fetching existing.")
+        # Re-fetch the company that was concurrently added
+        return db_session.query(Company).filter_by(name=company_name).first()
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error adding company {company_name}: {e}")
+        # Depending on desired behavior, you might re-raise or return None
+        return None
+
+def _get_or_create_job_board(db_session,
+                             name: str,
+                             type: str,
+                             link: str,
+                             platform: str,
+                             company_id: int = None) -> JobBoard:
+    """Gets an existing job board by link or creates a new one."""
+    job_board = db_session.query(JobBoard).filter_by(link=link).first()
+    if job_board:
+        return job_board
+
+    # Create new job board
+    if company_id:
+        job_board = JobBoard(
+            type=type,
+            link=link,
+            platform=platform,
+            company_id=company_id
+        )
+    else:
+        job_board = JobBoard(
+            type=type,
+            link=link,
+            platform=platform,
+        )
+    db_session.add(job_board)
+    try:
+        db_session.flush()
+        print(f"Added Job Board: {name} ({link})")
+        return job_board
+    except IntegrityError:
+        db_session.rollback()
+        print(f"Job Board with link '{link}' already exists (concurrent add?). Skipping.")
+        # Re-fetch the job board that was concurrently added
+        return db_session.query(JobBoard).filter_by(link=link).first()
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error adding job board {name} ({link}): {e}")
+        # Depending on desired behavior, you might re-raise or return None
+        return None
+
+def _process_job_board(csv_file, 
+                       db_session):
+    with open(csv_file, 'r', encoding='utf-8-sig') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            try:
+                _process_job_board_row(db_session, row)
+            except Exception as e:
+                print(f"Error processing row {row}: {e}")
+
+    # Commit all successful changes
+    db_session.commit()
+    print("Finished updating job boards from CSV.")
+
+def _process_job_board_row(db_session, 
+                           row: dict):
+    """Processes a single row from the job board CSV for updating."""
+    name = row.get('Name')
+    job_board_type = row.get('Type')
+    sector = row.get('Sector')
+    link = row.get('Link')
+    platform = row.get('Platform')
+
+    if not all([sector, job_board_type, link, platform]):
+        print(f"Skipping row due to missing data: {row}")
+        return
+
+    job_board = db_session.query(JobBoard).filter_by(link=link).first()
+
+    if job_board:
+        _update_existing_job_board(db_session, job_board, row)
+    else:
+        _create_new_job_board_from_row(db_session, row)
+
+def _update_existing_job_board(db_session, 
+                               job_board: JobBoard, 
+                               row: dict):
+    """Updates an existing job board and its associated company if necessary."""
+    company_name = row.get('Name')
+    job_board_type = row.get('Type')
+    sector = row.get('Sector')
+    link = row.get('Link')
+    platform = row.get('Platform')
+
+    print(f"Updating Job Board: {company_name if company_name else platform} ({link})")
+    job_board.type = job_board_type
+    job_board.platform = platform
+
+    if job_board_type != 'Company':
+        return # Only process company updates for 'Company' type job boards
+
+    # Handle company updates for 'Company' type job boards
+    if job_board.company and job_board.company.name != company_name:
+        new_company = _get_or_create_company(db_session, company_name, sector)
+        if new_company:
+            job_board.company_id = new_company.id
+        return # Company name changed and handled
+
+    if job_board.company and job_board.company.sector != sector:
+        job_board.company.sector = sector
+        print(f"Updated Company sector: {company_name}")
+        return # Company sector updated
+
+    if not job_board.company and company_name:
+        # No company linked, create one and link it
+        company = _get_or_create_company(db_session, company_name, sector)
+        if company:
+            job_board.company_id = company.id
+
+def _create_new_job_board_from_row(db_session, 
+                                   row: dict):
+    """Creates a new job board and its associated company if necessary."""
+    company_name = row.get('Name')
+    job_board_type = row.get('Type')
+    sector = row.get('Sector')
+    link = row.get('Link')
+    platform = row.get('Platform')
+
+    company = None
+    if job_board_type == 'Company':
+        company = _get_or_create_company(db_session, company_name, sector)
+        if not company:
+            print(f"Could not get or create company for new job board: {row}")
+            return # Skip job board creation if company creation failed
+
+    _get_or_create_job_board(db_session, company_name, job_board_type, link, platform, company.id if company else None)
+
+
 # --- Database Helper ---
 
-def _add_listing_to_db(db, listing_data: dict):
-    """Helper to create/add Listing, handling duplicates and validation."""
-    if 'date_posted' in listing_data and not isinstance(listing_data['date_posted'], dt):
-        # This should ideally be handled by parse_date returning datetime objects
-        # but keeping the check as a safeguard.
-        # print(f"Warning: date_posted not datetime for {listing_data.get('link')}. Type: {type(listing_data['date_posted'])}")
-        listing_data['date_posted'] = parse_date(str(listing_data.get('date_posted')))
+# def _add_listing_to_db(db, listing_data: dict):
+#     """Helper to create/add Listing, handling duplicates and validation."""
+#     if 'date_posted' in listing_data and not isinstance(listing_data['date_posted'], dt):
+#         # This should ideally be handled by parse_date returning datetime objects
+#         # but keeping the check as a safeguard.
+#         # print(f"Warning: date_posted not datetime for {listing_data.get('link')}. Type: {type(listing_data['date_posted'])}")
+#         listing_data['date_posted'] = parse_date(str(listing_data.get('date_posted')))
 
-    if not all(listing_data.get(k) for k in ['title', 'link']):
-        # print(f"Skipping listing due to missing title or link: {listing_data.get('title')}, {listing_data.get('link')}")
-        return False
+#     if not all(listing_data.get(k) for k in ['title', 'link']):
+#         # print(f"Skipping listing due to missing title or link: {listing_data.get('title')}, {listing_data.get('link')}")
+#         return False
 
-    company_name = None
-    company_id = listing_data.get('company_id')
+#     company_name = None
+#     company_id = listing_data.get('company_id')
 
-    if not company_id and 'job_board_id' in listing_data:
-        job_board = db.query(JobBoard).get(listing_data['job_board_id'])
-        if job_board and job_board.company:
-            company_id = job_board.company.id
-            company_name = job_board.company.name # Get name for consistency if ID is found
+#     if not company_id and 'job_board_id' in listing_data:
+#         job_board = db.query(JobBoard).get(listing_data['job_board_id'])
+#         if job_board and job_board.company:
+#             company_id = job_board.company.id
+#             company_name = job_board.company.name # Get name for consistency if ID is found
+    
+#     if not company_id and 'company_name' in listing_data and listing_data['company_name']:
+#         company_name = listing_data['company_name']
+    
+#     if company_name and not company_id:
+#         company = db.query(Company).filter(Company.name.ilike(company_name)).first()
+#         if not company:
+#             print(f"Creating new company: {company_name}")
+#             company = Company(name=company_name)
+#             db.add(company)
+#             db.flush() # Flush to get the new ID
+#         company_id = company.id
+    
+#     if company_id:
+#         listing_data['company_id'] = company_id
+#     else:
+#         # print(f"Warning: No company_id for listing '{listing_data.get('title')}' on board {listing_data.get('job_board_id')}. Skipping.")
+#         return False
+    
+#     max_title_len = 255 # Could be a config value
+#     if len(listing_data['title']) > max_title_len:
+#         listing_data['title'] = listing_data['title'][:max_title_len]
+    
+#     existing = db.query(Listing.id).filter_by(link=listing_data['link']).first()
+#     if existing:
+#         return False
+    
+#     if 'company_name' in listing_data: # Not part of Listing model, remove before **
+#         del listing_data['company_name']
 
-    if not company_id and 'company_name' in listing_data and listing_data['company_name']:
-        company_name = listing_data['company_name']
+#     try:
+#         listing = Listing(**listing_data)
+#         db.add(listing)
+#         return True
+#     except IntegrityError: # Should be rare if link check is effective
+#         db.rollback()
+#         # print(f"Integrity error adding listing (likely duplicate despite check): {listing_data.get('link')}")
+#         return False
+#     except Exception as e:
+#         db.rollback()
+#         # print(f"Error creating listing object for {listing_data.get('link')}: {e}")
+#         return False
     
-    if company_name and not company_id:
-        company = db.query(Company).filter(Company.name.ilike(company_name)).first()
-        if not company:
-            print(f"Creating new company: {company_name}")
-            company = Company(name=company_name)
-            db.add(company)
-            db.flush() # Flush to get the new ID
-        company_id = company.id
     
-    if company_id:
-        listing_data['company_id'] = company_id
-    else:
-        # print(f"Warning: No company_id for listing '{listing_data.get('title')}' on board {listing_data.get('job_board_id')}. Skipping.")
-        return False
-    
-    max_title_len = 255 # Could be a config value
-    if len(listing_data['title']) > max_title_len:
-        listing_data['title'] = listing_data['title'][:max_title_len]
-    
-    existing = db.query(Listing.id).filter_by(link=listing_data['link']).first()
-    if existing:
-        return False
-    
-    if 'company_name' in listing_data: # Not part of Listing model, remove before **
-        del listing_data['company_name']
-
-    try:
-        listing = Listing(**listing_data)
-        db.add(listing)
-        return True
-    except IntegrityError: # Should be rare if link check is effective
-        db.rollback()
-        # print(f"Integrity error adding listing (likely duplicate despite check): {listing_data.get('link')}")
-        return False
-    except Exception as e:
-        db.rollback()
-        # print(f"Error creating listing object for {listing_data.get('link')}: {e}")
-        return False
