@@ -1,7 +1,8 @@
 import os
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, UniqueConstraint, DateTime # Import DateTime
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
-import datetime # Import datetime for default value
+import datetime
+from datetime import datetime as dt # Import datetime for default value
 from role_aggr.environment import DATABASE_FILE
 
 # Create the base class for declarative models
@@ -14,7 +15,9 @@ class Company(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
     sector = Column(String)
-
+    added_at = Column(DateTime(timezone=True), nullable=False, default=dt.now(datetime.timezone.utc)) 
+    updated_at = Column(DateTime(timezone=True), onupdate=dt.now(datetime.timezone.utc)) 
+    
     # Relationships
     job_boards = relationship("JobBoard", back_populates="company")
     listings = relationship("Listing", back_populates="company")
@@ -27,11 +30,13 @@ class JobBoard(Base):
     __tablename__ = 'job_boards'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    type = Column(String) # e.g., 'Aggregate', 'Company'
-    link = Column(String, unique=True, nullable=False)
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=True) # Nullable for aggregate boards
-
+    type = Column(String) # e.g., 'Aggregate', 'Company'
+    platform = Column(String)
+    link = Column(String, unique=True, nullable=False)
+    added_at = Column(DateTime(timezone=True), nullable=False, default=dt.now(datetime.timezone.utc)) 
+    updated_at = Column(DateTime(timezone=True), onupdate=dt.now(datetime.timezone.utc)) 
+    
     # Relationships
     company = relationship("Company", back_populates="job_boards")
     listings = relationship("Listing", back_populates="job_board")
@@ -44,14 +49,16 @@ class Listing(Base):
     __tablename__ = 'listings'
 
     id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
+    job_board_id = Column(Integer, ForeignKey('job_boards.id'), nullable=False)
     title = Column(String, nullable=False)
     location = Column(String)
     description = Column(Text, nullable=True) # Allow for longer descriptions
     link = Column(String, unique=True, nullable=False) # Unique link to avoid duplicates
     # Change date_posted to DateTime type
-    date_posted = Column(DateTime(timezone=True), nullable=True, default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)) # Use timezone-aware DateTime
-    company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
-    job_board_id = Column(Integer, ForeignKey('job_boards.id'), nullable=False)
+    date_posted = Column(DateTime(timezone=True), nullable=True, default=dt.min.replace(tzinfo=datetime.timezone.utc)) # Use timezone-aware DateTime
+    added_at = Column(DateTime(timezone=True), nullable=False, default=dt.now(datetime.timezone.utc)) 
+    updated_at = Column(DateTime(timezone=True), onupdate=dt.now(datetime.timezone.utc)) 
 
     # Relationships
     company = relationship("Company", back_populates="listings")
