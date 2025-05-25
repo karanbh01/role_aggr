@@ -37,6 +37,7 @@ def parse_relative_date(date_str_raw: str) -> str | None:
     except Exception:
         # print(f"Could not parse date: {date_str_raw}")
         return date_str_raw # Return original if parsing fails, or None
+
 def parse_location(location_str_raw: str) -> str:
     """
     Parses a raw location string by removing the "locations" prefix (case-insensitive)
@@ -48,3 +49,11 @@ def parse_location(location_str_raw: str) -> str:
     # Use regex to remove "locations" prefix case-insensitively, with optional whitespace
     cleaned_location = re.sub(r'^locations\s*', '', location_str_raw, flags=re.IGNORECASE)
     return cleaned_location.strip()
+
+def conditional_print(message: str, show_loading_bar: bool = False) -> None:
+    """
+    Prints the message only if show_loading_bar is False.
+    Useful for providing detailed output when progress bars are disabled.
+    """
+    if not show_loading_bar:
+        print(message)

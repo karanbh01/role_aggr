@@ -1,4 +1,6 @@
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+from tqdm import tqdm
+from .utils import conditional_print
 
 from .config import (
     JOB_LIST_SELECTOR,
@@ -13,7 +15,8 @@ from .config import (
 from .processing import extract_job_summaries
 
 async def initialize_playwright_browser(p, 
-                                        target_url):
+                                        target_url, 
+                                        show_loading_bar=False):
     """Initializes Playwright browser, context, and navigates to the target URL."""
     browser = await p.chromium.launch(headless=True)
     context = await browser.new_context(
@@ -33,101 +36,121 @@ async def initialize_playwright_browser(p,
     await context.route("**/*.css", lambda route: route.abort())
     page = await context.new_page()
 
-    print(f"Navigating to {target_url}...")
+    conditional_print(f"Navigating to {target_url}...", show_loading_bar)
     try:
         await page.goto(target_url, wait_until="networkidle", timeout=20000)
     except PlaywrightTimeoutError:
-        print(f"Timeout navigating to {target_url}. Proceeding with potentially incomplete page.")
+        print(f"Timeout navigating to {target_url}. Proceeding with potentially incomplete page.") # Critical
     except Exception as e:
-        print(f"Error navigating to {target_url}: {e}")
+        print(f"Error navigating to {target_url}: {e}") # Critical
         await browser.close()
         return None, None # Return None for page and browser on error
     return page, browser
 
-async def check_pagination_exists(page):
+async def check_pagination_exists(page, 
+                                  show_loading_bar=False):
     """Checks if pagination controls are present on the page."""
     try:
         await page.wait_for_selector(PAGINATION_CONTAINER_SELECTOR, timeout=5000)
-        print("Pagination controls found.")
+        conditional_print("Pagination controls found.", show_loading_bar)
         return True
     except PlaywrightTimeoutError:
-        print("No pagination controls found.")
+        conditional_print("No pagination controls found.", show_loading_bar)
         return False
 
-async def navigate_to_next_page(page):
+async def navigate_to_next_page(page, 
+                                show_loading_bar=False):
     """Navigates to the next page using the next page button."""
     try:
         next_button = await page.query_selector(NEXT_PAGE_BUTTON_SELECTOR)
         if next_button and not await next_button.is_disabled():
-            print("Navigating to the next page...")
+            conditional_print("Navigating to the next page...", show_loading_bar)
             await next_button.click()
             await page.wait_for_load_state("domcontentloaded", timeout=10000)
-            print("Successfully navigated to the next page.")
+            conditional_print("Successfully navigated to the next page.", show_loading_bar)
             return True
         else:
-            print("Next page button not found or is disabled.")
+            conditional_print("Next page button not found or is disabled.", show_loading_bar)
             return False
     except PlaywrightTimeoutError:
-        print("Timeout navigating to the next page.")
+        print("Timeout navigating to the next page.") # Critical
         return False
     except Exception as e:
-        print(f"Error navigating to the next page: {e}")
+        print(f"Error navigating to the next page: {e}") # Critical
         return False
 
-async def paginate_through_job_listings(page, 
+async def paginate_through_job_listings(page,
+                                        company_name, 
                                         target_url, 
-                                        max_pages=None):
+                                        max_pages=None,
+                                        show_loading_bar=False):
     """
     Controls the pagination process, iterating through pages and accumulating job summaries.
     """
     all_job_summaries = []
     current_page_num = 1
     
+    progress_bar = None
+    if show_loading_bar:
+        
+        progress_bar = tqdm(desc=f"{company_name} : Scraping pages & collecting jobs",
+                            unit="page",
+                            bar_format="{desc}: {n_fmt} pages [{postfix}]")
+        progress_bar.set_postfix(jobs=0)  # Initial job count
+
     while True:
-        print(f"\n--- Processing Page {current_page_num} ---")
+        conditional_print(f"\n--- Processing Page {current_page_num} ---", show_loading_bar)
         
         # First, try to extract jobs directly without scrolling
         page_job_summaries = await extract_job_summaries(page,
                                                          JOB_ITEM_SELECTOR,
                                                          JOB_TITLE_SELECTOR,
                                                          JOB_POSTED_DATE_SELECTOR,
-                                                         target_url)
+                                                         target_url,
+                                                         show_loading_bar) # Pass show_loading_bar
 
         if not page_job_summaries:
-            print("No jobs found initially. Attempting to scroll to load all jobs.")
-            # Scroll to load all jobs on the current page if no jobs were found
-            await scroll_to_load_all_jobs(page, JOB_LIST_SELECTOR, JOB_ITEM_SELECTOR)
+            conditional_print("No jobs found initially. Attempting to scroll to load all jobs.", show_loading_bar)
+            await scroll_to_load_all_jobs(page, JOB_LIST_SELECTOR, JOB_ITEM_SELECTOR, show_loading_bar=show_loading_bar) # Pass show_loading_bar
             
-            # Re-extract job summaries after scrolling
             page_job_summaries = await extract_job_summaries(page,
                                                              JOB_ITEM_SELECTOR,
                                                              JOB_TITLE_SELECTOR,
                                                              JOB_POSTED_DATE_SELECTOR,
-                                                             target_url)
+                                                             target_url,
+                                                             show_loading_bar) # Pass show_loading_bar
         all_job_summaries.extend(page_job_summaries)
-        print(f"Total job summaries collected so far: {len(all_job_summaries)}")
+        
+        if progress_bar is not None:
+            progress_bar.update(1) # Increment page count
+            progress_bar.set_postfix(jobs=len(all_job_summaries)) # Update job count
+
+        conditional_print(f"Total job summaries collected so far: {len(all_job_summaries)}", show_loading_bar)
 
         if max_pages and current_page_num >= max_pages:
-            print(f"Reached maximum pages ({max_pages}). Stopping pagination.")
+            conditional_print(f"Reached maximum pages ({max_pages}). Stopping pagination.", show_loading_bar)
             break
 
-        if not await check_pagination_exists(page):
-            print("No pagination controls found or end of pagination. Stopping.")
+        if not await check_pagination_exists(page, show_loading_bar): # check_pagination_exists already uses conditional_print
+            conditional_print("End of pagination or no controls found. Stopping.", show_loading_bar)
             break
 
-        if not await navigate_to_next_page(page):
-            print("Could not navigate to the next page. Stopping pagination.")
+        if not await navigate_to_next_page(page, show_loading_bar): # navigate_to_next_page uses conditional_print and print for errors
+            conditional_print("Could not navigate to the next page. Stopping pagination.", show_loading_bar)
             break
         
         current_page_num += 1
-        await page.wait_for_timeout(500) # Wait a bit before processing the next page
+        await page.wait_for_timeout(500)
 
+    if progress_bar is not None:
+        progress_bar.close()
     return all_job_summaries
 
 async def fetch_job_details(page, 
-                            job_url):
+                            job_url,
+                            show_loading_bar=False):
     """Fetches and parses details from a single job posting page."""
-    print(f"Navigating to job detail page: {job_url}")
+    conditional_print(f"Navigating to job detail page: {job_url}", show_loading_bar)
     job_details = {"url": job_url, "description": "N/A", "job_id": "N/A", "detail_page_title": "N/A"}
     try:
         await page.goto(job_url, wait_until="domcontentloaded", timeout=60000) # Increased timeout
@@ -155,17 +178,18 @@ async def fetch_job_details(page,
         # job_details["tags"] = [await tag.inner_text() for tag in tags_elements]
 
     except PlaywrightTimeoutError:
-        print(f"Timeout loading or finding elements on job detail page: {job_url}")
+        print(f"Timeout loading or finding elements on job detail page: {job_url}") # Critical
     except Exception as e:
-        print(f"Error processing job detail page {job_url}: {e}")
+        print(f"Error processing job detail page {job_url}: {e}") # Critical
     return job_details
 
-async def scroll_to_load_all_jobs(page, 
-                                  job_list_selector, 
-                                  job_item_selector, 
-                                  max_scroll_attempts=20):
+async def scroll_to_load_all_jobs(page,
+                                  job_list_selector,
+                                  job_item_selector,
+                                  max_scroll_attempts=20,
+                                  show_loading_bar=False):
     """Scrolls the page to load all job listings, handling infinite scroll."""
-    print("Scrolling to load all jobs...")
+    conditional_print("Scrolling to load all jobs...", show_loading_bar)
     job_list_items_count = 0
     scroll_attempts = 0
 
@@ -176,7 +200,7 @@ async def scroll_to_load_all_jobs(page,
             previous_job_count = job_list_items_count
             current_items = await page.query_selector_all(job_item_selector)
             job_list_items_count = len(current_items)
-            print(f"Found {job_list_items_count} job items so far...")
+            conditional_print(f"Found {job_list_items_count} job items so far...", show_loading_bar)
 
             if job_list_items_count > previous_job_count:
                 scroll_attempts = 0  # Reset counter if new jobs are found
@@ -184,19 +208,19 @@ async def scroll_to_load_all_jobs(page,
                 await page.wait_for_timeout(1000)  # Reduced wait time for content to load
             else:
                 scroll_attempts += 1
-                print(f"No new jobs loaded on scroll attempt {scroll_attempts}/{max_scroll_attempts}. Retrying...")
+                conditional_print(f"No new jobs loaded on scroll attempt {scroll_attempts}/{max_scroll_attempts}. Retrying...", show_loading_bar)
                 await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 await page.wait_for_timeout(1000) # Reduced wait for subsequent attempts
 
             if scroll_attempts >= 5: # Increased threshold for breaking the loop
-                print("No new jobs loaded after multiple scroll attempts. Assuming end of list.")
+                conditional_print("No new jobs loaded after multiple scroll attempts. Assuming end of list.", show_loading_bar)
                 break
         
-        print(f"Finished scrolling. Total jobs found on list page: {job_list_items_count}")
+        conditional_print(f"Finished scrolling. Total jobs found on list page: {job_list_items_count}", show_loading_bar)
         return True
     except PlaywrightTimeoutError:
-        print("Timeout waiting for job list or during scrolling. Processing available jobs.")
+        print("Timeout waiting for job list or during scrolling. Processing available jobs.") # Critical
         return False
     except Exception as e:
-        print(f"Error during scrolling: {e}")
+        print(f"Error during scrolling: {e}") # Critical
         return False
