@@ -59,5 +59,6 @@ docs/_build/
 .roo/
 /.roomodes
 planning/
+.rooignore
 
 role_aggr/scripts
