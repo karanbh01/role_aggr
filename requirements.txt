@@ -10,3 +10,4 @@ dateparser==1.2.1
 playwright==1.52.0
 numpy==2.2.6
 pandas==2.2.3 
+tqdm==4.67.1
