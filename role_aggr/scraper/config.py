@@ -20,3 +20,5 @@ JOB_ID_DETAIL_SELECTOR = "span[data-automation-id='jobPostingJobId']" # Job ID o
 PAGINATION_CONTAINER_SELECTOR = "nav[aria-label='pagination']"
 NEXT_PAGE_BUTTON_SELECTOR = "button[aria-label='next']"
 PAGE_NUMBER_SELECTOR = "button[data-uxi-query-id='paginationPageButton']"
+# Concurrency settings
+JOB_DETAIL_CONCURRENCY = 5
