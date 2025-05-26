@@ -42,31 +42,13 @@ if _project_root_alt not in sys.path:
 
 
 # Database imports
-try:
-    from database.model import SessionLocal, Listing, Company
-    from database.functions import init_db, update_job_boards, DATABASE_FILE
-except ImportError:
-    import sys
-    # If run directly, __file__ is app.py. os.path.dirname gives role_aggr.
-    # os.path.dirname(os.path.dirname()) gives project root.
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    # Attempt imports again after path modification
-    from database.model import SessionLocal, Listing, Company
-    from database.functions import init_db, update_job_boards, DATABASE_FILE
+from role_aggr.database.model import SessionLocal, Listing, Company
+from role_aggr.database.functions import init_db, update_job_boards, DATABASE_FILE
+
 
 
 # Scraper update function import
-try:
-    from role_aggr.scraper import update_job_listings_from_boards
-except ImportError as e:
-     logging.error(f"Error importing scraper update function from role_aggr.scraper: {e}", exc_info=True)
-     def update_job_listings_from_boards():
-         logging.error("Fallback: Scraper function 'update_job_listings_from_boards' not available due to import error.")
-         # Avoid print here, use logging
-         # import time # time is already imported via datetime
-         # time.sleep(5) # Not useful in a real scenario
+from role_aggr.scripts.scraper import main
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -104,22 +86,18 @@ def index():
         # Convert Listing objects to dictionaries and format date
         for listing in listings:
             # Format the date for display
-            date_display = "N/A"
-            if listing.date_posted and listing.date_posted != datetime.min.replace(tzinfo=pytz.utc):
-                try:
-                    # Example format: "Oct 27, 2023" - adjust as desired
-                    date_display = listing.date_posted.strftime('%b %d, %Y')
-                except ValueError:
-                    # Handle potential invalid dates stored (shouldn't happen with default)
-                    date_display = "Invalid Date"
+            try:
+                date_display = listing.date_posted.strftime('%b %d, %Y')
+            except ValueError:
+                # Handle potential invalid dates stored (shouldn't happen with default)
+                date_display = "Invalid Date"
 
             # Determine if the job is new (posted within the last 24 hours)
             is_new = False
-            if listing.date_posted and listing.date_posted != datetime.min.replace(tzinfo=pytz.utc):
-                now_utc = datetime.now(pytz.utc)
-                time_difference = now_utc - listing.date_posted.replace(tzinfo=pytz.utc)
-                if time_difference < timedelta(hours=24):
-                    is_new = True
+            now_utc = datetime.now()
+            time_difference = now_utc - listing.date_posted
+            if time_difference < timedelta(hours=24):
+                is_new = True
 
             jobs_data.append({
                 'title': listing.title,
@@ -127,7 +105,6 @@ def index():
                 'location': listing.location or 'N/A',
                 'date_posted': date_display, # Use formatted date string
                 'url': listing.link,
-                'source': listing.job_board.name if listing.job_board else 'N/A',
                 'is_new': is_new # Add the is_new flag
             })
             # No need to sort jobs_data here, already ordered by query
@@ -151,44 +128,6 @@ def index():
                            jobs=jobs_data,
                            companies=companies,
                            selected_company=company_filter)
-
-# --- Background Task Handling ---
-update_thread = None
-is_updating = False
-
-def run_update_task():
-    """Wrapper function to run the update and manage state."""
-    global is_updating
-    is_updating = True
-    print("Background update task started.")
-    try:
-        update_job_listings_from_boards()
-    except Exception as e:
-        print(f"Exception in background update task: {e}")
-    finally:
-        is_updating = False
-        print("Background update task finished.")
-
-@app.route('/update-jobs')
-def update_jobs():
-    """Route to trigger the background job scraping process."""
-    print("--- DEBUG: /update-jobs route hit ---") # Added debug print
-    global update_thread, is_updating
-
-    if is_updating:
-        flash("An update is already in progress.", 'info')
-    else:
-        flash("Job listing update started in the background. Refresh the page in a few minutes.", 'success')
-        update_thread = threading.Thread(target=run_update_task)
-        update_thread.start()
-
-    return redirect(url_for('index'))
-
-@app.route('/update-status')
-def update_status():
-    """API endpoint to check if an update is running (optional)."""
-    global is_updating
-    return {"is_updating": is_updating}
 
 
 if __name__ == '__main__':
