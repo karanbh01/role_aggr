@@ -1,6 +1,6 @@
 # role/aggr: An Aggregator for Finance Roles built using Flask
 
-![role_aggr_home](assets/images/role_aggr_home.png)
+![role_aggr_home](role_aggr/role_aggr_home.png)
 
 ## Project Overview
 `role/aggr` is a specialized web application designed to aggregate job listings specifically for finance roles from various online job boards. It provides a centralized platform for job seekers to discover relevant opportunities, streamlining the job search process in the finance industry. The application features robust web scraping capabilities, a structured database for job data, and an intuitive web interface for easy navigation and search.
