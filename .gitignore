@@ -61,4 +61,4 @@ docs/_build/
 planning/
 .rooignore
 
-role_aggr/scripts
+role_aggr/scripts/csv
