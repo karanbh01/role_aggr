@@ -1,12 +1,16 @@
 import os
 import csv
+import logging
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from role_aggr.database.model import SessionLocal, Listing, Company, JobBoard, Base, engine
 from role_aggr.environment import DATABASE_DIR, DATABASE_FILE, CSV_FILE_PATH
 from datetime import datetime as dt
 import pandas as pd
-#from role_aggr.scraper.utils import parse_date
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 ## main functions: ##
 
@@ -23,13 +27,13 @@ def get_db():
 def init_db():
     """Creates the database tables."""
     
-    print(f"Initializing database at: {DATABASE_FILE}")
+    logger.info(f"Initializing database at: {DATABASE_FILE}")
     
     # Create the database directory if it doesn't exist
     os.makedirs(DATABASE_DIR, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     
-    print("Database tables created.")
+    logger.info("Database tables created.")
 
 def update_job_boards(csv_file=CSV_FILE_PATH):
     """
@@ -38,15 +42,15 @@ def update_job_boards(csv_file=CSV_FILE_PATH):
     If it doesn't exist, creates a new job board.
     """
     
-    print(f"Updating job boards from CSV: {csv_file}")
+    logger.info(f"Updating job boards from CSV: {csv_file}")
     db_session = SessionLocal()
     try:
         _process_job_board(csv_file, db_session)
     except FileNotFoundError:
-        print(f"Error: CSV file not found at {csv_file}")
+        logger.error(f"Error: CSV file not found at {csv_file}")
     except Exception as e:
         db_session.rollback()
-        print(f"An error occurred during job board update: {e}")
+        logger.error(f"An error occurred during job board update: {e}")
     finally:
         db_session.close()
 
@@ -66,17 +70,111 @@ def get_job_boards(dataframe=False) -> list | pd.DataFrame:
         return job_boards
     
     except Exception as e:
-        print(f"Error fetching job boards: {e}")
+        logger.error(f"Error fetching job boards: {e}")
         return []
     finally:
         db_session.close()
 
+def update_job_listings(all_job_data: list) -> tuple[bool, str]:
+    """
+    Saves job listing data to the database.
+
+    Args:
+        all_job_data (list): A list of job listing dictionaries.
+
+    Returns:
+        tuple[bool, str]: A tuple containing a boolean indicating success/failure
+                          and a message with statistics or error details.
+    """
+    db_session = SessionLocal()
+    success_count = 0
+    failure_messages = []
+
+    try:
+        for job_data in all_job_data:
+            # Data Validation
+            if not isinstance(job_data, dict):
+                failure_messages.append(f"Invalid data format: {job_data}. Expected a dictionary.")
+                continue
+
+            # Extract data, handling potential missing keys
+            job_title = job_data.get('title')
+            company_name = job_data.get('company_name')
+
+            job_board_url = job_data.get('job_board_url') # Main URL of the board
+
+            job_link = job_data.get('url') # Specific URL for the job
+            location = job_data.get('location_parsed')
+            date_posted_str = job_data.get('date_posted_parsed')
+            description = job_data.get('description') # Added job description
+
+            if not all([job_title, company_name, job_link, job_board_url]):
+                failure_messages.append(f"Missing required data for job: {job_title or 'Unknown'}. Data: {job_data}")
+                continue
+
+            #Date is expected to be in ISO format from scraper, or None
+            date_posted = None
+            if date_posted_str:
+                try:
+                    date_posted = dt.fromisoformat(date_posted_str)
+                except ValueError:
+                    failure_messages.append(f"Could not convert posted date to datetime object for {job_title}: {date_posted_str}")
+                    logger.warning(f"Could not convert posted date to datetime object for {job_title}: {date_posted_str}")
+                    continue
+
+            try:
+                # Get or create company
+                company = _get_or_create_company(db_session, 
+                                                 company_name)
+                if not company:
+                    failure_messages.append(f"Failed to get or create company '{company_name}' for job: {job_title}")
+                    logger.error(f"Failed to get or create company '{company_name}' for job: {job_title}")
+                    continue
+
+                # Query existing job board
+                job_board = db_session.query(JobBoard).filter_by(link=job_board_url).first()
+
+                if not job_board:
+                    failure_messages.append(f"Job board with canonical URL '{job_board_url}' not found for {job_title}. Ensure job boards are pre-populated.")
+                    logger.error(f"Job board with canonical URL '{job_board_url}' not found for {job_title}.")
+                    continue
+
+                # Create Listing object
+                listing = Listing(title=job_title,
+                                  link=job_link,
+                                  location=location,
+                                  date_posted=date_posted,
+                                  description=description, # Added job description
+                                  company_id=company.id,
+                                  job_board_id=job_board.id)
+                db_session.add(listing)
+                db_session.flush() # Flush to get the ID before commit
+                success_count += 1
+                logger.debug(f"Successfully added job: {job_title}")
+
+            except IntegrityError as e:
+                db_session.rollback()
+                failure_messages.append(f"Duplicate entry for job {job_title}: {e}")
+                logger.warning(f"Duplicate entry for job {job_title}: {e}")
+            except Exception as e:
+                db_session.rollback()
+                failure_messages.append(f"Error saving job {job_title}: {e}")
+                logger.error(f"Error saving job {job_title}: {e}")
+
+        db_session.commit()
+        return True, f"Successfully saved {success_count} job listings. Failures: {len(failure_messages)}. Messages: {failure_messages}"
+
+    except Exception as e:
+        db_session.rollback()
+        return False, f"An unexpected error occurred: {e}"
+    finally:
+        db_session.close()
 
 ## helper functions: ##
 
-def _get_or_create_company(db_session, 
-                           company_name: str, 
-                           sector: str) -> Company:
+def _get_or_create_company(db_session,
+                           company_name: str,
+                           sector: str = None) -> Company:
     """Gets an existing company or creates a new one."""
     company = db_session.query(Company).filter_by(name=company_name).first()
     if company:
@@ -87,16 +185,16 @@ def _get_or_create_company(db_session,
     db_session.add(company)
     try:
         db_session.flush()  # Assign ID to company before using it
-        print(f"Added Company: {company_name}")
+        logger.info(f"Added Company: {company_name}")
         return company
     except IntegrityError:
         db_session.rollback()
-        print(f"Company '{company_name}' already exists (concurrent add?). Fetching existing.")
+        logger.warning(f"Company '{company_name}' already exists (concurrent add?). Fetching existing.")
         # Re-fetch the company that was concurrently added
         return db_session.query(Company).filter_by(name=company_name).first()
     except Exception as e:
         db_session.rollback()
-        print(f"Error adding company {company_name}: {e}")
+        logger.error(f"Error adding company {company_name}: {e}")
         # Depending on desired behavior, you might re-raise or return None
         return None
 
@@ -128,16 +226,16 @@ def _get_or_create_job_board(db_session,
     db_session.add(job_board)
     try:
         db_session.flush()
-        print(f"Added Job Board: {name} ({link})")
+        logger.info(f"Added Job Board: {name} ({link})")
         return job_board
     except IntegrityError:
         db_session.rollback()
-        print(f"Job Board with link '{link}' already exists (concurrent add?). Skipping.")
+        logger.warning(f"Job Board with link '{link}' already exists (concurrent add?). Skipping.")
         # Re-fetch the job board that was concurrently added
         return db_session.query(JobBoard).filter_by(link=link).first()
     except Exception as e:
         db_session.rollback()
-        print(f"Error adding job board {name} ({link}): {e}")
+        logger.error(f"Error adding job board {name} ({link}): {e}")
         # Depending on desired behavior, you might re-raise or return None
         return None
 
@@ -149,13 +247,13 @@ def _process_job_board(csv_file,
             try:
                 _process_job_board_row(db_session, row)
             except Exception as e:
-                print(f"Error processing row {row}: {e}")
+                logger.error(f"Error processing row {row}: {e}")
 
     # Commit all successful changes
     db_session.commit()
-    print("Finished updating job boards from CSV.")
+    logger.info("Finished updating job boards from CSV.")
 
-def _process_job_board_row(db_session, 
+def _process_job_board_row(db_session,
                            row: dict):
     """Processes a single row from the job board CSV for updating."""
     name = row.get('Name')
@@ -165,7 +263,7 @@ def _process_job_board_row(db_session,
     platform = row.get('Platform')
 
     if not all([sector, job_board_type, link, platform]):
-        print(f"Skipping row due to missing data: {row}")
+        logger.warning(f"Skipping row due to missing data: {row}")
         return
 
     job_board = db_session.query(JobBoard).filter_by(link=link).first()
@@ -185,7 +283,7 @@ def _update_existing_job_board(db_session,
     link = row.get('Link')
     platform = row.get('Platform')
 
-    print(f"Updating Job Board: {company_name if company_name else platform} ({link})")
+    logger.info(f"Updating Job Board: {company_name if company_name else platform} ({link})")
     job_board.type = job_board_type
     job_board.platform = platform
 
@@ -201,7 +299,7 @@ def _update_existing_job_board(db_session,
 
     if job_board.company and job_board.company.sector != sector:
         job_board.company.sector = sector
-        print(f"Updated Company sector: {company_name}")
+        logger.info(f"Updated Company sector: {company_name}")
         return # Company sector updated
 
     if not job_board.company and company_name:
@@ -223,12 +321,9 @@ def _create_new_job_board_from_row(db_session,
     if job_board_type == 'Company':
         company = _get_or_create_company(db_session, company_name, sector)
         if not company:
-            print(f"Could not get or create company for new job board: {row}")
+            logger.error(f"Could not get or create company for new job board: {row}")
             return # Skip job board creation if company creation failed
 
     _get_or_create_job_board(db_session, company_name, job_board_type, link, platform, company.id if company else None)
 
 
-def save_job_listing_data_to_db():
-    ...
-    
