@@ -224,3 +224,29 @@ async def extract_job_summaries(page,
 
     conditional_print(f"Extracted {len(job_summaries)} job summaries.", show_loading_bar)
     return job_summaries
+
+async def filter_job_data(job_data_list,
+                          show_loading_bar=False):
+    """
+    Filters job data to remove duplicates and jobs posted 30+ days ago.
+    """
+    filtered_jobs = []
+    seen_urls = set()
+    jobs_removed_duplicate = 0
+    jobs_removed_date = 0
+
+    for job in job_data_list:
+        # Remove duplicates based on url
+        if job.get("url") not in seen_urls:
+            seen_urls.add(job.get("url"))
+            # Remove jobs posted 30+ days ago
+            if "posted 30+ days ago" not in job.get("date_posted_raw", "").lower():
+                filtered_jobs.append(job)
+            else:
+                jobs_removed_date += 1
+        else:
+            jobs_removed_duplicate += 1
+        
+    conditional_print(f"Removed {jobs_removed_duplicate} duplicate jobs.",show_loading_bar)
+    conditional_print(f"Removed {jobs_removed_date} jobs posted 30+ days ago.",show_loading_bar)
+    return filtered_jobs
