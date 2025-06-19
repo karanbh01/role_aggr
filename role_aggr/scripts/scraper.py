@@ -56,7 +56,7 @@ def main(test=False,
     """
     dt_str = dt.strftime(dt.now(),"%Y%m%d_%H%M%S")
     if test:
-        platform_job_boards = {"Workday": [{'company_name': "BofA",
+        platform_job_boards = {"Workday": [{'company_name': "Deutsche Bank",
                                             'job_board_url': TARGET_URL}]}
         
     else: 
@@ -73,4 +73,4 @@ def main(test=False,
                 show_loading_bar=show_loading_bar)
 
 if __name__ == "__main__": 
-    main(max_pages=2)  # Set to True for testing, False for full run
+     main(test=True, max_pages=20)  # Set to True for testing, False for full run

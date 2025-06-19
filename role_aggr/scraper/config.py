@@ -1,5 +1,5 @@
 # config.py
-TARGET_URL = "https://ghr.wd1.myworkdayjobs.com/en-US/lateral-emea/jobs"
+TARGET_URL = "https://db.wd3.myworkdayjobs.com/en-US/DBWebsite"
 
 # Selectors (These need to be verified and potentially adjusted by inspecting the target page)
 # It's highly recommended to use data-automation-id if available and stable
