@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.DEBUG,
 logging.info("Root logger configured at top of app.py. Logging to console only.")
 
 # --- Standard Flask and App Imports ---
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import sys, os
 from datetime import datetime, timedelta
 import pytz
@@ -51,6 +51,7 @@ from role_aggr.database.functions import init_db, update_job_boards, DATABASE_FI
 from role_aggr.scripts.scraper import main
 
 app = Flask(__name__)
+print("--- DEBUG: Flask app created ---") # Added debug print after Flask app creation
 app.secret_key = os.urandom(24)
 
 
@@ -61,8 +62,25 @@ app.secret_key = os.urandom(24)
 
 @app.route('/')
 def index():
+    print("--- DEBUG: Entering index() function ---") # Added debug print
     """Main route to display job listings from the database."""
-    company_filter = request.args.get('company', '')
+    # Get multiple values for filters using getlist()
+    company_filters = request.args.getlist('company')
+    location_filters = request.args.getlist('location')
+    
+    # DEBUG: Log what we received
+    logging.debug(f"Raw request.args: {dict(request.args)}")
+    logging.debug(f"Company filters received: {company_filters}")
+    logging.debug(f"Location filters received: {location_filters}")
+    
+    # Remove empty strings from filters
+    company_filters = [c for c in company_filters if c.strip()]
+    location_filters = [l for l in location_filters if l.strip()]
+    
+    # DEBUG: Log after filtering
+    logging.debug(f"Company filters after filtering: {company_filters}")
+    logging.debug(f"Location filters after filtering: {location_filters}")
+    
     db: Session = SessionLocal()
     jobs_data = []
     companies = []
@@ -75,9 +93,13 @@ def index():
             joinedload(Listing.job_board)
         )
 
-        # Apply company filter
-        if company_filter:
-            query = query.join(Company).filter(Company.name.ilike(f"%{company_filter}%"))
+        # Apply company filter - use IN clause for multiple selections
+        if company_filters:
+            query = query.join(Company).filter(Company.name.in_(company_filters))
+        
+        # Apply location filter - use IN clause for multiple selections
+        if location_filters:
+            query = query.filter(Listing.location.in_(location_filters))
 
         # Fetch listings, ordered by date_posted descending (latest first)
         # Use nullslast() to put jobs with unknown dates at the end
@@ -112,23 +134,39 @@ def index():
         # Get unique company names for the filter dropdown
         companies = sorted([c.name for c in db.query(Company.name).distinct().order_by(Company.name)])
 
+        # Get unique locations for the filter dropdown
+        try:
+            location_query = db.query(Listing.location).distinct().filter(
+                Listing.location.isnot(None),
+                Listing.location != '',
+                Listing.location != 'N/A'
+            ).order_by(Listing.location)
+            locations = sorted([l[0] for l in location_query.all() if l[0] and l[0].strip()])
+            logging.debug(f"Fetched {len(locations)} unique locations: {locations[:10]}{'...' if len(locations) > 10 else ''}")
+        except Exception as e:
+            logging.error(f"Error fetching locations: {e}")
+            locations = []
+
     except Exception as e:
-        print(f"Error fetching data from database: {e}")
+        logging.error(f"Error fetching data from database: {e}") # Changed print to logging.error
         error_message = "Error loading job listings from the database."
         # jobs_data remains []
         companies = []
+        locations = [] # Initialize locations list on error
     finally:
         db.close()
 
     if error_message:
         flash(error_message, 'error')
 
+    logging.debug(f"Rendering index.html with {len(jobs_data)} jobs, {len(companies)} companies, and {len(locations)} locations.") # Added debug log before rendering
     # Pass jobs_data directly (already sorted by DB query)
     return render_template('index.html',
                            jobs=jobs_data,
                            companies=companies,
-                           selected_company=company_filter)
-
+                           selected_companies=company_filters,  # Pass list of selected companies
+                           locations=locations, # Pass locations to the template
+                           selected_locations=location_filters) # Pass list of selected locations
 
 if __name__ == '__main__':
     # Logging is now configured at the top of the file.

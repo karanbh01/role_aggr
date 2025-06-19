@@ -135,22 +135,7 @@ h1 span:last-child {
   font-weight: 500; /* Medium weight */
 }
 
-.refresh-button {
-  display: inline-block;
-  background-color: transparent;
-  color: var(--text-color);
-  padding: 8px 15px;
-  border-radius: 4px;
-  text-decoration: none;
-  transition: background-color 0.2s;
-  border: none; /* Remove border */
-  font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
-  font-weight: 500; /* Medium weight */
-}
 
-.refresh-button:hover {
-  background-color: #3a7bd5;
-}
 
 .filter-section {
   display: flex;
@@ -165,18 +150,134 @@ h1 span:last-child {
   gap: 10px;
 }
 
-.company-filter {
-  background-color: transparent;
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  padding: 6px 10px;
-  border-radius: 4px;
-  min-width: 200px;
-  font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
-  font-weight: 500; /* Medium weight */
+/* Dropdown Filter Styles */
+.filter-dropdown {
+  position: relative;
+  display: inline-block;
+  margin-right: 20px;
 }
 
-.filter-button {
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  border-radius: 4px;
+  min-width: 200px;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.dropdown-toggle:hover {
+  background-color: var(--hover-color);
+}
+
+.dropdown-arrow {
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  top: 100%;
+  left: 0;
+  margin-top: 2px;
+  padding-top: 5px; /* Add padding to the top for the search input */
+}
+
+.dropdown-search {
+  width: calc(100% - 24px); /* Adjust width for padding */
+  padding: 8px 12px;
+  margin: 0 12px 5px 12px; /* Add margin around the search input */
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--card-bg-color); /* Use card background for input */
+  color: var(--text-color);
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+  font-size: 14px;
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+.dropdown-search::placeholder {
+  color: var(--secondary-color); /* Style placeholder text */
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.checkbox-item:last-child {
+  border-bottom: none;
+}
+
+.checkbox-item:hover {
+  background-color: var(--hover-color);
+}
+
+.checkbox-item input[type="checkbox"] {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+}
+
+/* Custom checkbox styling */
+.checkbox-item input[type="checkbox"] {
+  appearance: none;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  width: 16px;
+  height: 16px;
+  position: relative;
+  cursor: pointer;
+}
+
+.checkbox-item input[type="checkbox"]:checked {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.checkbox-item input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.filter-button, .clear-button {
   background-color: transparent;
   color: var(--text-color);
   border: none; /* Remove border */
@@ -186,10 +287,15 @@ h1 span:last-child {
   transition: background-color 0.2s;
   font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
   font-weight: 500; /* Medium weight */
+  margin-left: 10px;
 }
 
 .filter-button:hover {
   background-color: #3a7bd5;
+}
+
+.clear-button:hover {
+  background-color: var(--danger-color);
 }
 
 .no-jobs {
@@ -253,6 +359,27 @@ footer {
   .filter-form {
     flex-direction: column;
     align-items: stretch;
+    gap: 15px;
+  }
+
+  .filter-dropdown {
+    margin-right: 0;
+    margin-bottom: 15px;
+  }
+
+  .dropdown-toggle {
+    min-width: 100%;
+  }
+
+  .dropdown-content {
+    min-width: 100%;
+    max-height: 200px; /* Reduce height on mobile */
+  }
+
+  .filter-button, .clear-button {
+    margin-left: 0;
+    margin-top: 10px;
+    width: 100%;
   }
 
   .refresh-button {
@@ -265,3 +392,34 @@ footer {
     margin-left: 5px; /* Add some space between the title and the tag */
     font-weight: normal; /* Ensure the tag is not bold */
 }
+/* Flash messages */
+.flash-messages {
+  margin: 20px 0;
+}
+
+.flash-message {
+  padding: 10px 15px;
+  margin: 5px 0;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.flash-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.flash-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.flash-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+
