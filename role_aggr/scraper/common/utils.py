@@ -1,4 +1,3 @@
-# utils.py
 from datetime import datetime, timedelta
 import re
 from dateutil.parser import parse as parse_date # For robust date parsing
@@ -11,7 +10,7 @@ def parse_relative_date(date_str_raw: str) -> str | None:
     """
     if not date_str_raw:
         return None
-    
+
     date_str = date_str_raw.lower().strip().replace("posted on", "")
 
     try:
@@ -19,7 +18,7 @@ def parse_relative_date(date_str_raw: str) -> str | None:
             return datetime.now().date().isoformat()
         if "posted yesterday" in date_str:
             return (datetime.now() - timedelta(days=1)).date().isoformat()
-        
+
         days_ago_match = re.search(r'posted\s+(\d+)\s+days?\s+ago', date_str)
         if days_ago_match:
             days = int(days_ago_match.group(1))
@@ -29,13 +28,13 @@ def parse_relative_date(date_str_raw: str) -> str | None:
         if plus_days_ago_match:
             days = int(plus_days_ago_match.group(1))
             return (datetime.now() - timedelta(days=days)).date().isoformat()
-        
+
         # Try parsing with dateutil for formats like "Posted Jan 10, 2024" or "Posted 01/10/2024"
         # Remove "Posted " prefix for better parsing
         cleaned_date_str = date_str.replace("posted ", "")
         return parse_date(cleaned_date_str).date().isoformat()
     except Exception:
-        # print(f"Could not parse date: {date_str_raw}")
+        # print(f"Could not parse date: {date_str_raw}") # Removed commented out print
         return date_str_raw # Return original if parsing fails, or None
 
 def parse_location(location_str_raw: str) -> str:
@@ -45,15 +44,7 @@ def parse_location(location_str_raw: str) -> str:
     """
     if not location_str_raw:
         return ""
-    
+
     # Use regex to remove "locations" prefix case-insensitively, with optional whitespace
     cleaned_location = re.sub(r'^locations\s*', '', location_str_raw, flags=re.IGNORECASE)
     return cleaned_location.strip()
-
-def conditional_print(message: str, show_loading_bar: bool = False) -> None:
-    """
-    Prints the message only if show_loading_bar is False.
-    Useful for providing detailed output when progress bars are disabled.
-    """
-    if not show_loading_bar:
-        print(message)

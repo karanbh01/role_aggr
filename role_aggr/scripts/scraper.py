@@ -37,6 +37,7 @@ def run_scraper(platform_job_boards,
             # conditional_print(f"Scraping {board_dict['company_name'] if board_dict['company_name'] else platform} at {target_url}", show_loading_bar)
             asyncio.run(scraper(company_name,
                                 target_url,
+                                platform,
                                 max_pages=max_pages,
                                 to_csv=to_csv,
                                 output_filename=output_filename,
@@ -73,4 +74,4 @@ def main(test=False,
                 show_loading_bar=show_loading_bar)
 
 if __name__ == "__main__": 
-     main(test=True, max_pages=20)  # Set to True for testing, False for full run
+     main(test=True, max_pages=5)  # Set to True for testing, False for full run

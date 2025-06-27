@@ -55,6 +55,9 @@ docs/_build/
 #database
 *.db
 
+# logging
+/role_aggr/logs
+
 # AI
 .roo/
 /.roomodes

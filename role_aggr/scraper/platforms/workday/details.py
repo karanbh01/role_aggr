@@ -1,17 +1,29 @@
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+# details.py
+from playwright.async_api import Page
 
-from .config import (
-    JOB_DESCRIPTION_SELECTOR,
-    JOB_ID_DETAIL_SELECTOR,
-)
-from .common.logging import setup_scraper_logger
+from playwright.async_api import Page, TimeoutError as PlaywrightTimeoutError
+from .config import JOB_DESCRIPTION_SELECTOR, JOB_ID_DETAIL_SELECTOR
+# Removed conditional_print import - using logger instead
+from role_aggr.scraper.common.logging import setup_scraper_logger # Import the logger setup function
 
-logger = setup_scraper_logger()
-async def fetch_job_details(page,
-                            job_url,
-                            show_loading_bar=False):
-    """Fetches and parses details from a single job posting page."""
-    logger.info(f"Navigating to job detail page: {job_url}") # Replace conditional_print with logger.info
+logger = setup_scraper_logger() # Initialize the logger
+
+async def fetch_job_details(page: Page, job_url: str, show_loading_bar: bool = False) -> dict:
+    """
+    Fetches and parses details from a single Workday job posting page.
+
+    Args:
+        page (Page): The Playwright page object.
+        job_url (str): The URL of the job detail page.
+        show_loading_bar (bool): Whether to show a loading bar.
+
+    Returns:
+        dict: A dictionary containing the job details.
+    """
+    if show_loading_bar:
+        print(f"Navigating to job detail page: {job_url}")
+    else:
+        logger.info(f"Navigating to job detail page: {job_url}")
     job_details = {"url": job_url, "description": "N/A", "job_id": "N/A", "detail_page_title": "N/A"}
     try:
         await page.goto(job_url, wait_until="domcontentloaded", timeout=60000) # Increased timeout
