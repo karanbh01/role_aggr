@@ -107,14 +107,12 @@ async def scraper(company_name: str,
 
         try:
             # Use the scraper instance to paginate and extract job summaries
-            job_summaries = await extract_job_summaries( # Use the refactored processing function
-                scraper=scraper_instance,
-                page=page,
-                company_name=company_name,
-                target_url=target_url,
-                max_pages=max_pages,
-                show_loading_bar=show_loading_bar
-            )
+            job_summaries = await extract_job_summaries(scraper=scraper_instance,
+                                                        page=page,
+                                                        company_name=company_name,
+                                                        target_url=target_url,
+                                                        max_pages=max_pages,
+                                                        show_loading_bar=show_loading_bar)
 
             job_summaries_full = []
 

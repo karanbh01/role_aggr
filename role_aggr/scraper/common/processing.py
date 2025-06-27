@@ -292,14 +292,12 @@ async def process_job_details_parallel(
     logger.info(f"--- Parallel Job Detail Processing Finished. Collected {len(all_job_data)} jobs. ---")
     return all_job_data
 
-async def extract_job_summaries(
-    scraper,
-    page,
-    company_name,
-    target_url,
-    max_pages=None,
-    show_loading_bar=False
-):
+async def extract_job_summaries(scraper,
+                                page,
+                                company_name,
+                                target_url,
+                                max_pages=None,
+                                show_loading_bar=False):
     """
     Generic orchestrator for extracting job summaries using platform-specific scrapers.
     
@@ -556,10 +554,8 @@ async def process_jobs_with_scraper(
 # Backward compatibility functions for legacy code
 async def extract_job_summaries_with_selectors(
     page,
-    job_item_selector,
-    job_title_selector,
-    job_posted_date_selector,
     target_url,
+    selectors: Dict[str, str],
     show_loading_bar=False
 ):
     """
@@ -576,11 +572,12 @@ async def extract_job_summaries_with_selectors(
         "Consider migrating to a platform-specific Scraper implementation."
     )
     
+    
     return await extract_job_summaries_legacy(
         page=page,
-        job_item_selector=job_item_selector,
-        job_title_selector=job_title_selector,
-        job_posted_date_selector=job_posted_date_selector,
+        job_item_selector=selectors['job_item_selector'],
+        job_title_selector=selectors['job_title_selector'],
+        job_posted_date_selector=selectors['job_posted_date_selector'],
         target_url=target_url,
         show_loading_bar=show_loading_bar
     )

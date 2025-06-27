@@ -85,7 +85,9 @@ class WorkdayScraper(Scraper):
         
         try:
             # Wait for the job list to load
-            await page.wait_for_selector(JOB_LIST_SELECTOR, timeout=30000)
+            logger.info("running job list selector wait...")
+    
+            await page.wait_for_selector(JOB_LIST_SELECTOR, timeout=60000)
             logger.info("Job list container found, starting extraction")
             
             # Check if pagination exists or if it's infinite scroll
@@ -127,9 +129,9 @@ class WorkdayScraper(Scraper):
                 await scroll_to_load_all_jobs(page, JOB_ITEM_SELECTOR, show_loading_bar)
                 
                 # Extract all job summaries after scrolling
-                all_job_summaries = await self._extract_job_summaries(
-                    page, target_url, show_loading_bar
-                )
+                all_job_summaries = await self._extract_job_summaries(page,
+                                                                      target_url,
+                                                                      show_loading_bar)
                 
                 logger.info(f"Extracted {len(all_job_summaries)} jobs via infinite scroll")
         
@@ -214,9 +216,10 @@ class WorkdayScraper(Scraper):
                 'job_posted_date_selector': JOB_POSTED_DATE_SELECTOR
             }
             
-            job_summaries = await extract_job_summaries_with_selectors(
-                page, target_url, selectors, show_loading_bar
-            )
+            job_summaries = await extract_job_summaries_with_selectors(page,
+                                                                       target_url,
+                                                                       selectors,
+                                                                       show_loading_bar)
             
             # Parse dates and locations using the Workday parser
             for summary in job_summaries:

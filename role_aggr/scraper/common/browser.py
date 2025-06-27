@@ -9,32 +9,23 @@ logger = setup_scraper_logger()
 
 async def initialize_playwright_browser(p,
                                         target_url,
-                                        job_list_selector, # Added as parameter
-                                        job_item_selector, # Added as parameter
-                                        job_title_selector, # Added as parameter
-                                        job_posted_date_selector, # Added as parameter
-                                        job_description_selector, # Added as parameter
-                                        job_id_detail_selector, # Added as parameter
-                                        next_page_button_selector, # Added as parameter
-                                        pagination_container_selector, # Added as parameter
                                         show_loading_bar=False):
     """Initializes Playwright browser, context, and navigates to the target URL."""
+    
     browser = await p.chromium.launch(headless=True)
-    context = await browser.new_context(
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        no_viewport=True, # Disable viewport to potentially save resources
-        java_script_enabled=True, # Keep JavaScript enabled for dynamic content
-        bypass_csp=True, # Bypass Content Security Policy
-        extra_http_headers={
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-        }
-    )
+    context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                                        no_viewport=True, # Disable viewport to potentially save resources
+                                        java_script_enabled=True, # Keep JavaScript enabled for dynamic content
+                                        bypass_csp=True, # Bypass Content Security Policy
+                                        extra_http_headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                                                            "Accept-Language": "en-US,en;q=0.5",
+                                                            "Connection": "keep-alive",
+                                                            "Upgrade-Insecure-Requests": "1"})
+    
     # Block image and stylesheet loading for faster page loads
     await context.route("**/*.{png,jpg,jpeg,gif,svg,webp}", lambda route: route.abort())
     await context.route("**/*.css", lambda route: route.abort())
+    
     page = await context.new_page()
 
     if show_loading_bar:
@@ -42,14 +33,18 @@ async def initialize_playwright_browser(p,
         print(f"Navigating to {target_url}...")
     else:
         logger.info(f"Navigating to {target_url}...")
+    
     try:
         await page.goto(target_url, wait_until="networkidle", timeout=20000)
+    
     except PlaywrightTimeoutError:
         logger.warning(f"Timeout navigating to {target_url}. Proceeding with potentially incomplete page.") # Critical
+    
     except Exception as e:
         logger.error(f"Error navigating to {target_url}: {e}") # Critical
         await browser.close()
         return None, None # Return None for page and browser on error
+    
     return page, browser
 
 async def check_pagination_exists(page,
@@ -150,7 +145,10 @@ async def paginate_through_job_listings(page,
                 print("No jobs found initially. Attempting to scroll to load all jobs.")
             else:
                 logger.info("No jobs found initially. Attempting to scroll to load all jobs.")
-            await scroll_to_load_all_jobs(page, job_list_selector, job_item_selector, show_loading_bar=show_loading_bar) # Pass show_loading_bar
+            await scroll_to_load_all_jobs(page, 
+                                          job_list_selector, 
+                                          job_item_selector, 
+                                          show_loading_bar=show_loading_bar) # Pass show_loading_bar
 
             page_job_summaries = await extract_job_summaries(page,
                                                              job_item_selector,
@@ -247,8 +245,10 @@ async def scroll_to_load_all_jobs(page,
         else:
             logger.info(f"Finished scrolling. Total jobs found on list page: {job_list_items_count}")
         return True
+    
     except PlaywrightTimeoutError:
         logger.warning("Timeout waiting for job list or during scrolling. Processing available jobs.") # Critical
+    
     except Exception as e:
         logger.error(f"Error during scrolling: {e}") # Critical
         return False
