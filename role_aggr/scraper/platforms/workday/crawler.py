@@ -12,13 +12,12 @@ from tqdm import tqdm
 
 from role_aggr.scraper.common.base import Scraper
 from role_aggr.scraper.common.logging import setup_scraper_logger
-from role_aggr.scraper.common.processing import extract_job_summaries_with_selectors
 from role_aggr.scraper.common.browser import (
     check_pagination_exists,
     navigate_to_next_page,
-    scroll_to_load_all_jobs,
-    paginate_through_job_listings
+    scroll_to_load_all_jobs
 )
+from role_aggr.scraper.common.utils import parse_location, parse_relative_date
 from .config import (
     JOB_LIST_SELECTOR,
     JOB_ITEM_SELECTOR,
@@ -185,57 +184,71 @@ class WorkdayScraper(Scraper):
             }
     
     async def _extract_job_summaries(
-        self,
-        page: Page,
-        target_url: str,
-        show_loading_bar: bool = False
+        self, page: Page, target_url: str, show_loading_bar: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Extract job summary information from the current Workday page.
-        
         This method extracts basic job information (title, URL, location, date)
         from job listing elements on the current page using Workday-specific selectors.
-        
         Args:
             page: Playwright page object for browser interaction
             target_url: Base URL for constructing absolute URLs
             show_loading_bar: Whether to display progress indicators
-            
         Returns:
             List of job summary dictionaries
         """
         logger.debug("Extracting job summaries from current page")
-        
+        job_summaries = []
         try:
-            # Use the common extraction function with Workday-specific selectors
-            selectors = {
-                'job_list_selector': JOB_LIST_SELECTOR,
-                'job_item_selector': JOB_ITEM_SELECTOR,
-                'job_title_selector': JOB_TITLE_SELECTOR,
-                'job_location_selector': JOB_LOCATION_SELECTOR,
-                'job_posted_date_selector': JOB_POSTED_DATE_SELECTOR
-            }
-            
-            job_summaries = await extract_job_summaries_with_selectors(page,
-                                                                       target_url,
-                                                                       selectors,
-                                                                       show_loading_bar)
-            
-            # Parse dates and locations using the Workday parser
-            for summary in job_summaries:
-                if summary.get('date_posted_raw'):
-                    summary['date_posted_parsed'] = self.parser.parse_date(
-                        summary['date_posted_raw']
-                    )
-                
-                if summary.get('location_raw'):
-                    summary['location_parsed'] = self.parser.parse_location(
-                        summary['location_raw']
-                    )
-            
-            logger.debug(f"Successfully extracted {len(job_summaries)} job summaries")
-            return job_summaries
-            
+            job_elements = await page.query_selector_all(JOB_ITEM_SELECTOR)
+            for job_element in tqdm(
+                job_elements,
+                desc="Extracting job summaries",
+                disable=not show_loading_bar,
+            ):
+                summary = {}
+                title_element = await job_element.query_selector(JOB_TITLE_SELECTOR)
+                if title_element:
+                    summary["title"] = (await title_element.inner_text()).strip()
+                    href = await title_element.get_attribute("href")
+                    if href:
+                        if href.startswith("/"):
+                            base_url = target_url.split(".com")[0] + ".com"
+                            summary["detail_url"] = base_url + href
+                        else:
+                            summary["detail_url"] = href
+                    else:
+                        summary["detail_url"] = "N/A"
+                else:
+                    summary["title"] = "N/A"
+                    summary["detail_url"] = "N/A"
+
+                location_element = await job_element.query_selector(
+                    JOB_LOCATION_SELECTOR
+                )
+                location_raw = (
+                    (await location_element.inner_text()).strip()
+                    if location_element
+                    else "N/A"
+                )
+                summary["location_raw"] = location_raw
+                summary["location_parsed"] = self.parser.parse_location(location_raw)
+
+                date_element = await job_element.query_selector(
+                    JOB_POSTED_DATE_SELECTOR
+                )
+                date_str_raw = (
+                    (await date_element.inner_text()).strip() if date_element else ""
+                )
+                summary["date_posted_raw"] = date_str_raw
+                summary["date_posted_parsed"] = self.parser.parse_date(date_str_raw)
+
+                if summary["title"] != "N/A" and summary["detail_url"] != "N/A":
+                    job_summaries.append(summary)
+            logger.debug(
+                f"Successfully extracted {len(job_summaries)} job summaries"
+            )
         except Exception as e:
             logger.error(f"Error extracting job summaries: {e}", exc_info=True)
-            return []
+        
+        return job_summaries

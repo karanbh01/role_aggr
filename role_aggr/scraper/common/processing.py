@@ -29,13 +29,11 @@ from .logging import setup_scraper_logger
 
 logger = setup_scraper_logger()
 
-async def process_job_details_sequential(
-    scraper,
-    page,
-    company_name,
-    job_summaries,
-    show_loading_bar=False
-):
+async def process_job_details_sequential(scraper,
+                                         page,
+                                         company_name,
+                                         job_summaries,
+                                         show_loading_bar=False):
     """
     Sequentially navigates to job detail pages, fetches details, and merges with summaries.
     
@@ -92,14 +90,12 @@ async def process_job_details_sequential(
     
     return all_job_data
 
-async def process_single_job(
-    scraper,
-    browser,
-    job_summary,
-    company_name,
-    semaphore,
-    show_loading_bar=False
-):
+async def process_single_job(scraper,
+                             browser,
+                             job_summary,
+                             company_name,
+                             semaphore,
+                             show_loading_bar=False):
     """
     Processes a single job: creates a new context/page, fetches details, and handles retries.
     
@@ -170,6 +166,7 @@ async def process_single_job(
                     logger.error(f"Failed to process job {job_url} after {attempts} attempts due to timeout.")
                     return None
                 await asyncio.sleep(2 * (attempt + 1)) # Exponential backoff for retries
+            
             except PlaywrightError as e: # Catch Playwright specific errors like TargetClosedError
                 logger.warning(f"Playwright error on attempt {attempt + 1} for {job_url}: {e}")
                 # Check type name as the error might be from playwright._impl._errors
@@ -180,12 +177,14 @@ async def process_single_job(
                     logger.error(f"Failed to process job {job_url} after {attempts} attempts due to Playwright error.")
                     return None
                 await asyncio.sleep(2 * (attempt + 1)) # Exponential backoff
+            
             except Exception as e:
                 logger.error(f"Generic error on attempt {attempt + 1} processing job {job_url}: {e}", exc_info=True)
                 if attempt == attempts - 1:
                     logger.error(f"Failed to process job {job_url} after {attempts} attempts due to generic error.")
                     return None
                 await asyncio.sleep(2 * (attempt + 1)) # Exponential backoff
+            
             finally:
                 if page:
                     try:
@@ -201,15 +200,14 @@ async def process_single_job(
                         logger.error(f"Error closing context for {job_url} (attempt: {attempt + 1}): {e_close}", exc_info=True)
                     except Exception as e_close_generic:
                         logger.error(f"Generic error closing context for {job_url} (attempt: {attempt + 1}): {e_close_generic}", exc_info=True)
+        
         return None # Fallback if all attempts fail
 
-async def process_job_details_parallel(
-    scraper,
-    browser,
-    company_name,
-    job_summaries,
-    show_loading_bar=False
-):
+async def process_job_details_parallel(scraper,
+                                       browser,
+                                       company_name,
+                                       job_summaries,
+                                       show_loading_bar=False):
     """
     Fetches job details in parallel using a semaphore to limit concurrency.
     
@@ -249,17 +247,13 @@ async def process_job_details_parallel(
         return all_job_data # Return empty list if no valid jobs
 
     # Create tasks only for valid summaries using the updated process_single_job function
-    tasks_for_processing = [
-        process_single_job(
-            scraper=scraper,
-            browser=browser,
-            job_summary=summary,
-            company_name=company_name,
-            semaphore=semaphore,
-            show_loading_bar=show_loading_bar
-        )
-        for summary in valid_job_summaries
-    ]
+    tasks_for_processing = [process_single_job(scraper=scraper,
+                                                browser=browser,
+                                                job_summary=summary,
+                                                company_name=company_name,
+                                                semaphore=semaphore,
+                                                show_loading_bar=show_loading_bar)
+                            for summary in valid_job_summaries]
 
     if not tasks_for_processing: # Should be redundant due to valid_job_summaries check, but safe
         logger.info("No tasks to process after filtering.")
@@ -333,13 +327,11 @@ async def extract_job_summaries(scraper,
     
     try:
         # Delegate to the platform-specific scraper implementation
-        job_summaries = await scraper.paginate_through_job_listings(
-            page=page,
-            company_name=company_name,
-            target_url=target_url,
-            max_pages=max_pages,
-            show_loading_bar=show_loading_bar
-        )
+        job_summaries = await scraper.paginate_through_job_listings(page=page,
+                                                                    company_name=company_name,
+                                                                    target_url=target_url,
+                                                                    max_pages=max_pages,
+                                                                    show_loading_bar=show_loading_bar)
         
         logger.info(f"Successfully extracted {len(job_summaries)} job summaries for {company_name}")
         return job_summaries
@@ -451,16 +443,15 @@ async def filter_job_data(job_data_list,
     logger.info(f"Removed {jobs_removed_duplicate} duplicate jobs.")
     logger.info(f"Removed {jobs_removed_date} jobs posted 30+ days ago.")
     return filtered_jobs
-async def process_jobs_with_scraper(
-    scraper,
-    browser,
-    page,
-    company_name,
-    target_url,
-    max_pages=None,
-    use_parallel_processing=True,
-    show_loading_bar=False
-):
+
+async def process_jobs_with_scraper(scraper,
+                                    browser,
+                                    page,
+                                    company_name,
+                                    target_url,
+                                    max_pages=None,
+                                    use_parallel_processing=True,
+                                    show_loading_bar=False):
     """
     Complete job processing pipeline using a platform-specific scraper.
     

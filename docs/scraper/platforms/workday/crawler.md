@@ -85,7 +85,7 @@ The crawler module provides the [`WorkdayScraper`](../../../role_aggr/scraper/pl
 
 **Returns:** Dictionary containing detailed job information including description, job ID, and page title
 
-### [`_extract_job_summaries()`](../../../role_aggr/scraper/platforms/workday/crawler.py:187)
+### [`_extract_job_summaries()`](../../../role_aggr/scraper/platforms/workday/crawler.py:186)
 
 **Purpose:** Extract job summary information from the current Workday page using platform-specific selectors and parsing.
 
@@ -95,18 +95,16 @@ The crawler module provides the [`WorkdayScraper`](../../../role_aggr/scraper/pl
 - `show_loading_bar` (bool): Whether to display progress indicators
 
 **Flow:**
-1. **Selector Configuration:** Constructs selector dictionary with Workday-specific selectors:
-   - `job_list_selector`: [`JOB_LIST_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:6)
-   - `job_item_selector`: [`JOB_ITEM_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:7)
-   - `job_title_selector`: [`JOB_TITLE_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:8)
-   - `job_location_selector`: [`JOB_LOCATION_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:9)
-   - `job_posted_date_selector`: [`JOB_POSTED_DATE_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:13)
-
-2. **Raw Extraction:** Uses [`extract_job_summaries_with_selectors()`](../../common/processing.md#extract_job_summaries_with_selectors) with Workday selectors
-
+1. **Direct Extraction:**
+   - Queries the page for all job listings using [`JOB_ITEM_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:7).
+   - Iterates through each job element to extract raw data.
+2. **Data Extraction:** For each job element, it extracts:
+   - **Title and URL** from the element matching [`JOB_TITLE_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:8).
+   - **Location** from the element matching [`JOB_LOCATION_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:9).
+   - **Date Posted** from the element matching [`JOB_POSTED_DATE_SELECTOR`](../../../role_aggr/scraper/platforms/workday/config.py:13).
 3. **Workday-Specific Parsing:**
-   - Parses dates using [`WorkdayParser.parse_date()`](../../../role_aggr/scraper/platforms/workday/parser.py:37)
-   - Parses locations using [`WorkdayParser.parse_location()`](../../../role_aggr/scraper/platforms/workday/parser.py:83)
+   - Parses the extracted raw date string using [`WorkdayParser.parse_date()`](../../../role_aggr/scraper/platforms/workday/parser.py:37).
+   - Parses the raw location string using [`WorkdayParser.parse_location()`](../../../role_aggr/scraper/platforms/workday/parser.py:83).
 
 **Returns:** List of job summary dictionaries with parsed data
 
