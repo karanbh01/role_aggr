@@ -53,6 +53,9 @@ class Listing(Base):
     job_board_id = Column(Integer, ForeignKey('job_boards.id'), nullable=False)
     title = Column(String, nullable=False)
     location = Column(String)
+    city = Column(String)
+    country = Column(String)
+    region = Column(String)
     description = Column(Text, nullable=True) # Allow for longer descriptions
     link = Column(String, unique=True, nullable=False) # Unique link to avoid duplicates
     # Change date_posted to DateTime type
