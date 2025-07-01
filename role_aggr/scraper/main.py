@@ -122,13 +122,11 @@ async def scraper(company_name: str,
                 job_summaries_full.append(summary_enriched)
 
             # Use the scraper instance to fetch job details in parallel
-            all_job_data = await process_job_details_parallel( # Use the refactored processing function
-                scraper=scraper_instance, # Pass the scraper instance
-                browser=browser,
-                company_name=company_name,
-                job_summaries=job_summaries_full,
-                show_loading_bar=show_loading_bar
-            )
+            all_job_data = await process_job_details_parallel(scraper=scraper_instance,
+                                                              browser=browser,
+                                                              company_name=company_name,
+                                                              job_summaries=job_summaries_full,
+                                                              show_loading_bar=show_loading_bar)
 
             logger.info(f"Jobs before filtering: {len(all_job_data)}")
             all_job_data = await filter_job_data(all_job_data,
