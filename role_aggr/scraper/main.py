@@ -4,7 +4,7 @@ import os
 import asyncio
 from playwright.async_api import async_playwright
 from role_aggr.database.functions import update_job_listings
-from .common.processing import filter_job_data, process_job_details_parallel, extract_job_summaries
+from .common.processing import filter_job_data, process_job_details_parallel, extract_job_summaries, process_jobs_with_scraper
 from .common.browser import initialize_playwright_browser
 from .factory import ConcreteScraperFactory # Import the concrete factory
 from .common.logging import setup_scraper_logger # Import the logger setup function
@@ -106,34 +106,23 @@ async def scraper(company_name: str,
             return [] # Return empty list on failure
 
         try:
-            # Use the scraper instance to paginate and extract job summaries
-            job_summaries = await extract_job_summaries(scraper=scraper_instance,
-                                                        page=page,
-                                                        company_name=company_name,
-                                                        target_url=target_url,
-                                                        max_pages=max_pages,
-                                                        show_loading_bar=show_loading_bar)
-
-            job_summaries_full = []
-
-            for summary_base in job_summaries:
-                summary_enriched = {**summary_base}
-                summary_enriched['job_board_url'] = target_url
-                job_summaries_full.append(summary_enriched)
-
-            # Use the scraper instance to fetch job details in parallel
-            all_job_data = await process_job_details_parallel( # Use the refactored processing function
-                scraper=scraper_instance, # Pass the scraper instance
+            # Use the integrated processing pipeline with EIP-002 Phase 4 batch processing
+            all_job_data = await process_jobs_with_scraper(
+                scraper=scraper_instance,
                 browser=browser,
+                page=page,
                 company_name=company_name,
-                job_summaries=job_summaries_full,
+                target_url=target_url,
+                max_pages=max_pages,
+                use_parallel_processing=True,  # Default to parallel processing
                 show_loading_bar=show_loading_bar
             )
-
-            logger.info(f"Jobs before filtering: {len(all_job_data)}")
-            all_job_data = await filter_job_data(all_job_data,
-                                                 show_loading_bar)
-            logger.info(f"Jobs after filtering: {len(all_job_data)}")
+            
+            # Add job_board_url to all job data
+            for job_data in all_job_data:
+                job_data['job_board_url'] = target_url
+            
+            logger.info(f"Final processed jobs count: {len(all_job_data)}")
 
             if to_csv:
                 save_job_listings_data_to_csv(all_job_data,

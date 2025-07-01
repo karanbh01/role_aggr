@@ -125,6 +125,9 @@ def index():
                 'title': listing.title,
                 'company': listing.company.name if listing.company else 'N/A',
                 'location': listing.location or 'N/A',
+                'city': listing.city or 'N/A',
+                'country': listing.country or 'N/A',
+                'region': listing.region or 'N/A',
                 'date_posted': date_display, # Use formatted date string
                 'url': listing.link,
                 'is_new': is_new # Add the is_new flag
