@@ -107,6 +107,28 @@ def update_job_listings(all_job_data: list) -> tuple[bool, str]:
             location = job_data.get('location_parsed')
             date_posted_str = job_data.get('date_posted_parsed')
             description = job_data.get('description') # Added job description
+            
+            # EIP-002: Extract intelligent parser location data (city, country, region)
+            city = None
+            country = None
+            region = None
+            
+            # Check for intelligent parser enhanced location data
+            intelligent_location = job_data.get('location_parsed_intelligent')
+            if intelligent_location and isinstance(intelligent_location, dict):
+                city = intelligent_location.get('city')
+                country = intelligent_location.get('country')
+                region = intelligent_location.get('region')
+                
+                # Clean up "Unknown" values - store as None for database consistency
+                if city == "Unknown":
+                    city = None
+                if country == "Unknown":
+                    country = None
+                if region == "Unknown":
+                    region = None
+                    
+                logger.debug(f"Extracted intelligent location data for {job_title}: city={city}, country={country}, region={region}")
 
             if not all([job_title, company_name, job_link, job_board_url]):
                 failure_messages.append(f"Missing required data for job: {job_title or 'Unknown'}. Data: {job_data}")
@@ -139,10 +161,13 @@ def update_job_listings(all_job_data: list) -> tuple[bool, str]:
                     logger.error(f"Job board with canonical URL '{job_board_url}' not found for {job_title}.")
                     continue
 
-                # Create Listing object
+                # Create Listing object with intelligent parser location data
                 listing = Listing(title=job_title,
                                   link=job_link,
                                   location=location,
+                                  city=city,
+                                  country=country,
+                                  region=region,
                                   date_posted=date_posted,
                                   description=description, # Added job description
                                   company_id=company.id,

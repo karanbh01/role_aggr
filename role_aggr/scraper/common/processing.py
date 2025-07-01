@@ -23,9 +23,10 @@ import asyncio
 from typing import Optional, List, Dict, Any
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
 from tqdm.asyncio import tqdm_asyncio
-from .config import JOB_DETAIL_CONCURRENCY
+from .config import JOB_DETAIL_CONCURRENCY, ENABLE_INTELLIGENT_PARSING
 from .utils import parse_relative_date, parse_location
 from .logging import setup_scraper_logger
+from .batch_processor import BatchJobProcessor
 
 logger = setup_scraper_logger()
 
@@ -95,11 +96,13 @@ async def process_single_job(scraper,
                              job_summary,
                              company_name,
                              semaphore,
-                             show_loading_bar=False):
+                             show_loading_bar=False,
+                             batch_processor=None):
     """
     Processes a single job: creates a new context/page, fetches details, and handles retries.
     
     Refactored to use the Scraper ABC interface for platform-agnostic detail fetching.
+    Enhanced with EIP-002 Phase 4 intelligent parsing integration with batch processing.
     
     Args:
         scraper: Instance of a platform-specific Scraper (implementing the Scraper ABC)
@@ -108,6 +111,7 @@ async def process_single_job(scraper,
         company_name: Name of the company/job board being scraped
         semaphore: Asyncio semaphore for concurrency control
         show_loading_bar: Whether to display progress indicators
+        batch_processor: Optional BatchJobProcessor instance for intelligent parsing
         
     Returns:
         Dictionary with complete job information or None if processing fails
@@ -158,6 +162,16 @@ async def process_single_job(scraper,
                 # Merge summary and detail data
                 full_job_info = {**job_summary, **detail_data}
                 full_job_info["company_name"] = company_name
+                
+                # EIP-002 Phase 4: Enhance with intelligent parsing if available
+                if batch_processor and ENABLE_INTELLIGENT_PARSING:
+                    try:
+                        full_job_info = await batch_processor.enhance_job_with_cached_data(full_job_info)
+                        logger.debug(f"Enhanced job with intelligent parsing: {full_job_info.get('title', 'Unknown')}")
+                    except Exception as e:
+                        logger.error(f"Failed to enhance job with intelligent parsing: {e}")
+                        # Continue without enhancement to maintain backward compatibility
+                
                 return full_job_info
                 
             except PlaywrightTimeoutError as e:
@@ -207,11 +221,13 @@ async def process_job_details_parallel(scraper,
                                        browser,
                                        company_name,
                                        job_summaries,
-                                       show_loading_bar=False):
+                                       show_loading_bar=False,
+                                       batch_processor=None):
     """
     Fetches job details in parallel using a semaphore to limit concurrency.
     
     Refactored to use the Scraper ABC interface for platform-agnostic detail fetching.
+    Enhanced with EIP-002 Phase 4 intelligent parsing integration with batch processing.
     
     Args:
         scraper: Instance of a platform-specific Scraper (implementing the Scraper ABC)
@@ -219,6 +235,7 @@ async def process_job_details_parallel(scraper,
         company_name: Name of the company/job board being scraped
         job_summaries: List of job summary dictionaries
         show_loading_bar: Whether to display progress indicators
+        batch_processor: Optional BatchJobProcessor instance for intelligent parsing
         
     Returns:
         List of complete job data dictionaries with details merged
@@ -252,7 +269,8 @@ async def process_job_details_parallel(scraper,
                                                 job_summary=summary,
                                                 company_name=company_name,
                                                 semaphore=semaphore,
-                                                show_loading_bar=show_loading_bar)
+                                                show_loading_bar=show_loading_bar,
+                                                batch_processor=batch_processor)
                             for summary in valid_job_summaries]
 
     if not tasks_for_processing: # Should be redundant due to valid_job_summaries check, but safe
@@ -503,6 +521,25 @@ async def process_jobs_with_scraper(scraper,
             logger.warning(f"No job summaries found for {company_name}")
             return []
         
+        # EIP-002 Phase 4: Initialize batch processor and prepare cache
+        batch_processor = None
+        if ENABLE_INTELLIGENT_PARSING:
+            try:
+                logger.info("Initializing batch processor for intelligent parsing")
+                batch_processor = BatchJobProcessor()
+                
+                # Pre-process batch: Extract unique locations and process in batch
+                logger.info("Preparing batch cache for location processing")
+                await batch_processor.prepare_batch_cache(job_summaries)
+                
+                stats = batch_processor.location_processor.get_stats()
+                logger.info(f"Batch cache prepared successfully: {stats}")
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize batch processor: {e}")
+                # Continue without batch processing to maintain backward compatibility
+                batch_processor = None
+        
         # Step 2: Fetch job details
         if use_parallel_processing:
             all_job_data = await process_job_details_parallel(
@@ -510,9 +547,12 @@ async def process_jobs_with_scraper(scraper,
                 browser=browser,
                 company_name=company_name,
                 job_summaries=job_summaries,
-                show_loading_bar=show_loading_bar
+                show_loading_bar=show_loading_bar,
+                batch_processor=batch_processor
             )
         else:
+            # Note: Sequential processing doesn't support batch_processor yet
+            # This maintains backward compatibility for sequential processing
             all_job_data = await process_job_details_sequential(
                 scraper=scraper,
                 page=page,
@@ -520,6 +560,19 @@ async def process_jobs_with_scraper(scraper,
                 job_summaries=job_summaries,
                 show_loading_bar=show_loading_bar
             )
+            
+            # Apply intelligent parsing to sequential results if enabled
+            if batch_processor and ENABLE_INTELLIGENT_PARSING:
+                logger.info("Applying intelligent parsing to sequential processing results")
+                enhanced_job_data = []
+                for job_data in all_job_data:
+                    try:
+                        enhanced_job = await batch_processor.enhance_job_with_cached_data(job_data)
+                        enhanced_job_data.append(enhanced_job)
+                    except Exception as e:
+                        logger.error(f"Failed to enhance job in sequential processing: {e}")
+                        enhanced_job_data.append(job_data)
+                all_job_data = enhanced_job_data
         
         # Step 3: Filter and clean results
         filtered_jobs = await filter_job_data(
@@ -527,10 +580,21 @@ async def process_jobs_with_scraper(scraper,
             show_loading_bar=show_loading_bar
         )
         
-        logger.info(
-            f"Completed job processing pipeline for {company_name}. "
-            f"Final count: {len(filtered_jobs)} jobs"
-        )
+        # Log final statistics including intelligent parsing
+        final_stats = {
+            "company": company_name,
+            "total_jobs": len(filtered_jobs),
+            "intelligent_parsing_enabled": ENABLE_INTELLIGENT_PARSING
+        }
+        
+        if batch_processor:
+            batch_stats = batch_processor.location_processor.get_stats()
+            final_stats.update({
+                "batch_processed_locations": batch_stats.get("cached_locations", 0),
+                "intelligent_parser_available": batch_stats.get("has_parser", False)
+            })
+        
+        logger.info(f"Completed job processing pipeline: {final_stats}")
         
         return filtered_jobs
         
