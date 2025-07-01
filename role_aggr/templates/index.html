@@ -253,8 +253,16 @@
                                 {% endif %}
                             </h2>
                             <div class="job-company">{{ job.company }}</div>
-                            {% if job.location is defined and job.location != "N/A" %}
+                            {% if job.city and job.country %}
+                            <div class="job-location">Location: {{ job.city }}, {{ job.country }}</div>
+                            {% elif job.city %}
+                            <div class="job-location">Location: {{ job.city }}</div>
+                            {% elif job.country %}
+                            <div class="job-location">Location: {{ job.country }}</div>
+                            {% elif job.location is defined and job.location != "N/A" %}
                             <div class="job-location">Location: {{ job.location }}</div>
+                            {% else %}
+                            <div class="job-location">Location: N/A</div>
                             {% endif %}
                             <div class="job-date">Posted: {{ job.date_posted }}</div>
                         </div>
