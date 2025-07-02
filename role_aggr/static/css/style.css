@@ -357,20 +357,21 @@ fieldset legend {
 }
 
 .job-card {
-  background-color: transparent; /* Remove background color */
-  border-radius: 0; /* Remove border radius */
-  padding: 4px 12px; /* Reduce vertical padding */
-  box-shadow: none; /* Remove box shadow */
-  transition: background-color 0.2s;
-  border: none; /* Remove border */
-  /* Remove bottom border */
-  cursor: pointer;
-  text-decoration: none;
-  color: #e0e0e5; /* Set job listing text color */
-  font-family: 'Geist', sans-serif; /* Apply Geist font */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+    background-color: transparent; /* Remove background color */
+    border-radius: 0; /* Remove border radius */
+    padding: 4px 12px; /* Reduce vertical padding */
+    box-shadow: none; /* Remove box shadow */
+    transition: background-color 0.2s;
+    border: none; /* Remove border */
+    /* Remove bottom border */
+    cursor: pointer;
+    text-decoration: none;
+    color: #e0e0e5; /* Set job listing text color */
+    font-family: 'Geist', sans-serif; /* Apply Geist font */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: calc(90% - 25px); /* Align with search and filter grid */
 }
 
 .job-card:hover {
