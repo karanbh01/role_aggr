@@ -43,7 +43,8 @@ if _project_root_alt not in sys.path:
 
 # Database imports
 from role_aggr.database.model import SessionLocal, Listing, Company
-from role_aggr.database.functions import init_db, update_job_boards, DATABASE_FILE
+from role_aggr.database.functions import init_db, update_job_boards, DATABASE_FILE, get_all_listings, get_unique_cities, get_unique_countries, get_unique_companies, get_unique_locations
+import math
 
 
 
@@ -62,114 +63,139 @@ app.secret_key = os.urandom(24)
 
 @app.route('/')
 def index():
-    print("--- DEBUG: Entering index() function ---") # Added debug print
-    """Main route to display job listings from the database."""
-    # Get multiple values for filters using getlist()
-    company_filters = request.args.getlist('company')
-    location_filters = request.args.getlist('location')
+    """Main route to display job listings with search, filtering, and pagination."""
+    search = request.args.get('search', '').strip()
+    city = request.args.get('city', '').strip()
+    country = request.args.get('country', '').strip()
+    company = request.args.getlist('company')  # Get multiple values
+    location = request.args.getlist('location')  # Get multiple values
+    date_filter = request.args.get('date_filter', '').strip()
+    items_per_page = request.args.get('items_per_page', '20').strip()
+    page = int(request.args.get('page', 1))
     
-    # DEBUG: Log what we received
-    logging.debug(f"Raw request.args: {dict(request.args)}")
-    logging.debug(f"Company filters received: {company_filters}")
-    logging.debug(f"Location filters received: {location_filters}")
-    
-    # Remove empty strings from filters
-    company_filters = [c for c in company_filters if c.strip()]
-    location_filters = [l for l in location_filters if l.strip()]
-    
-    # DEBUG: Log after filtering
-    logging.debug(f"Company filters after filtering: {company_filters}")
-    logging.debug(f"Location filters after filtering: {location_filters}")
-    
-    db: Session = SessionLocal()
-    jobs_data = []
-    companies = []
-    error_message = None
+    # Convert items_per_page to int with default
+    try:
+        per_page = int(items_per_page) if items_per_page else 20
+    except ValueError:
+        per_page = 20
 
     try:
-        # Base query, eager load relationships
-        query = db.query(Listing).options(
-            joinedload(Listing.company),
-            joinedload(Listing.job_board)
-        )
-
-        # Apply company filter - use IN clause for multiple selections
-        if company_filters:
-            query = query.join(Company).filter(Company.name.in_(company_filters))
+        # Get unique data for dropdown filters
+        available_cities = get_unique_cities()
+        available_countries = get_unique_countries()
+        available_companies = get_unique_companies()
+        available_locations = get_unique_locations()
         
-        # Apply location filter - use IN clause for multiple selections
-        if location_filters:
-            query = query.filter(Listing.location.in_(location_filters))
+        listings, total_count = get_all_listings(search=search, city=city, country=country, company=company, location=location, date_filter=date_filter, page=page, per_page=per_page)
+        total_pages = math.ceil(total_count / per_page)
 
-        # Fetch listings, ordered by date_posted descending (latest first)
-        # Use nullslast() to put jobs with unknown dates at the end
-        listings = query.order_by(desc(Listing.date_posted).nullslast(), Listing.id.desc()).all()
+        # Calculate pagination variables
+        prev_page = page - 1 if page > 1 else None
+        next_page = page + 1 if page < total_pages else None
 
-        # Convert Listing objects to dictionaries and format date
-        for listing in listings:
-            # Format the date for display
-            try:
-                date_display = listing.date_posted.strftime('%b %d, %Y')
-            except ValueError:
-                # Handle potential invalid dates stored (shouldn't happen with default)
-                date_display = "Invalid Date"
+        # Generate a list of page numbers to display in the pagination control
+        # This example shows a simple range, you might want a more sophisticated one
+        # like showing current page, +/- 2 pages, and first/last pages.
+        pages_to_display = []
+        if total_pages <= 7: # If total pages are few, display all
+            pages_to_display = list(range(1, total_pages + 1))
+        else:
+            # Always show first page
+            pages_to_display.append(1)
+            # Show pages around the current page
+            start_range = max(2, page - 2)
+            end_range = min(total_pages - 1, page + 2)
 
-            # Determine if the job is new (posted within the last 24 hours)
+            if start_range > 2:
+                pages_to_display.append('...') # Ellipsis for skipped pages
+
+            for i in range(start_range, end_range + 1):
+                pages_to_display.append(i)
+
+            if end_range < total_pages - 1:
+                pages_to_display.append('...') # Ellipsis for skipped pages
+            
+            # Always show last page if not already included
+            if total_pages not in pages_to_display:
+                pages_to_display.append(total_pages)
+
+        pagination = {
+            'prev_page': prev_page,
+            'next_page': next_page,
+            'pages': pages_to_display,
+            'current_page': page,
+            'total_pages': total_pages
+        }
+
+        jobs_data = []
+        now = datetime.now()
+        for item in listings:
+            if isinstance(item, tuple):
+                listing_obj = item[0]
+                relevance_score = item[1]
+            else:
+                listing_obj = item
+                relevance_score = 0  # Set to 0 when no search is active
+
+            # Determine if job is new (posted within last 24 hours)
             is_new = False
-            now_utc = datetime.now()
-            time_difference = now_utc - listing.date_posted
-            if time_difference < timedelta(hours=24):
-                is_new = True
+            if listing_obj.date_posted:
+                time_diff = now - listing_obj.date_posted
+                is_new = time_diff.total_seconds() < 24 * 60 * 60  # 24 hours
+
+            # Format date to show only date part, not time
+            formatted_date = listing_obj.date_posted.strftime('%Y-%m-%d') if listing_obj.date_posted else 'N/A'
 
             jobs_data.append({
-                'title': listing.title,
-                'company': listing.company.name if listing.company else 'N/A',
-                'location': listing.location or 'N/A',
-                'city': listing.city or 'N/A',
-                'country': listing.country or 'N/A',
-                'region': listing.region or 'N/A',
-                'date_posted': date_display, # Use formatted date string
-                'url': listing.link,
-                'is_new': is_new # Add the is_new flag
+                'title': listing_obj.title,
+                'company': listing_obj.company.name if listing_obj.company else 'N/A',
+                'location': listing_obj.location,
+                'city': listing_obj.city,
+                'country': listing_obj.country,
+                'date_posted': formatted_date,
+                'url': listing_obj.link,
+                'description': listing_obj.description,
+                'relevance_score': relevance_score,
+                'is_new': is_new
             })
-            # No need to sort jobs_data here, already ordered by query
 
-        # Get unique company names for the filter dropdown
-        companies = sorted([c.name for c in db.query(Company.name).distinct().order_by(Company.name)])
-
-        # Get unique locations for the filter dropdown
-        try:
-            location_query = db.query(Listing.location).distinct().filter(
-                Listing.location.isnot(None),
-                Listing.location != '',
-                Listing.location != 'N/A'
-            ).order_by(Listing.location)
-            locations = sorted([l[0] for l in location_query.all() if l[0] and l[0].strip()])
-            logging.debug(f"Fetched {len(locations)} unique locations: {locations[:10]}{'...' if len(locations) > 10 else ''}")
-        except Exception as e:
-            logging.error(f"Error fetching locations: {e}")
-            locations = []
-
+        return render_template(
+            'index.html',
+            jobs=jobs_data,
+            search=search,
+            search_query=search,  # Add search_query for template logic
+            city=city,
+            country=country,
+            company=company,
+            location=location,
+            date_filter=date_filter,
+            items_per_page=items_per_page,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            pagination=pagination, # Pass the pagination object
+            available_cities=available_cities,
+            available_countries=available_countries,
+            available_companies=available_companies,
+            available_locations=available_locations
+        )
     except Exception as e:
-        logging.error(f"Error fetching data from database: {e}") # Changed print to logging.error
-        error_message = "Error loading job listings from the database."
-        # jobs_data remains []
-        companies = []
-        locations = [] # Initialize locations list on error
-    finally:
-        db.close()
-
-    if error_message:
-        flash(error_message, 'error')
-
-    logging.debug(f"Rendering index.html with {len(jobs_data)} jobs, {len(companies)} companies, and {len(locations)} locations.") # Added debug log before rendering
-    # Pass jobs_data directly (already sorted by DB query)
-    return render_template('index.html',
-                           jobs=jobs_data,
-                           companies=companies,
-                           selected_companies=company_filters,  # Pass list of selected companies
-                           locations=locations, # Pass locations to the template
-                           selected_locations=location_filters) # Pass list of selected locations
+        logging.error(f"Error fetching listings: {e}")
+        flash("Error loading job listings.", "error")
+        # Ensure pagination is passed even on error to prevent template errors
+        pagination = {
+            'prev_page': None,
+            'next_page': None,
+            'pages': [1],
+            'current_page': 1,
+            'total_pages': 0
+        }
+        # Get empty lists for dropdown filters even on error
+        available_cities = []
+        available_countries = []
+        available_companies = []
+        available_locations = []
+        return render_template('index.html', jobs=[], search=search, search_query=search, city=city, country=country, company=company, location=location, date_filter=date_filter, items_per_page=items_per_page, page=page, per_page=per_page, total_pages=0, pagination=pagination, available_cities=available_cities, available_countries=available_countries, available_companies=available_companies, available_locations=available_locations)
 
 if __name__ == '__main__':
     # Logging is now configured at the top of the file.

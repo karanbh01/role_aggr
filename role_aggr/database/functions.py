@@ -1,3 +1,5 @@
+from sqlalchemy import or_, func, case, desc
+from datetime import datetime, timedelta
 import os
 import csv
 import logging
@@ -351,4 +353,324 @@ def _create_new_job_board_from_row(db_session,
 
     _get_or_create_job_board(db_session, company_name, job_board_type, link, platform, company.id if company else None)
 
+def get_all_listings(search=None, city=None, country=None, company=None, location=None, date_filter=None, page=1, per_page=20):
+    """
+    Fetches all job listings with search, filtering, relevance scoring, and pagination.
 
+    Args:
+        search (str): Search term for title and description.
+        city (str): Filter by city.
+        country (str): Filter by country.
+        company (list): Filter by company names.
+        location (list): Filter by location strings.
+        date_filter (str): Filter by date ('24h', '7d', 'new').
+        page (int): Page number for pagination (minimum 1).
+        per_page (int): Number of items per page (minimum 1, maximum 100).
+
+    Returns:
+        tuple: (list of listings, total_items count)
+    """
+    db_session = SessionLocal()
+    try:
+        # Validate input parameters
+        if not isinstance(page, int) or page < 1:
+            logger.warning(f"Invalid page parameter {page} provided. Defaulting to 1.")
+            page = 1
+        if not isinstance(per_page, int) or per_page < 1:
+            logger.warning(f"Invalid per_page parameter {per_page} provided. Defaulting to 20.")
+            per_page = 20
+        elif per_page > 100:
+            logger.warning(f"per_page parameter {per_page} exceeds maximum of 100. Setting to 100.")
+            per_page = 100
+        
+        # Clean and validate search term
+        if search is not None:
+            search = search.strip()
+            if not search:
+                search = None
+        
+        # Clean and validate location filters
+        if city is not None:
+            city = city.strip()
+            if not city:
+                city = None
+        if country is not None:
+            country = country.strip()
+            if not country:
+                country = None
+        
+        # Clean and validate company filter
+        if company is not None:
+            if isinstance(company, str):
+                company = [company.strip()] if company.strip() else None
+            elif isinstance(company, list):
+                company = [c.strip() for c in company if c.strip()]
+                if not company:
+                    company = None
+        
+        # Clean and validate location filter
+        if location is not None:
+            if isinstance(location, str):
+                location = [location.strip()] if location.strip() else None
+            elif isinstance(location, list):
+                location = [l.strip() for l in location if l.strip()]
+                if not location:
+                    location = None
+        
+        # Validate date_filter parameter
+        if date_filter is not None and date_filter not in ['24h', '7d', 'new']:
+            logger.warning(f"Invalid date_filter parameter {date_filter}. Ignoring filter.")
+            date_filter = None
+
+        # Build query with eager loading to prevent N+1 queries
+        if search:
+            logger.info(f"Processing search query: '{search}'")
+            # Escape special characters for SQL LIKE queries
+            search_escaped = search.replace('%', '\\%').replace('_', '\\_')
+            logger.info(f"Escaped search query: '{search_escaped}'")
+            
+            # Enhanced relevance scoring
+            relevance_score = case(
+                
+                # Exact title match gets highest score
+                (func.lower(Listing.title) == func.lower(search), 100),
+                # Title starts with search term
+                (func.lower(Listing.title).like(func.lower(f"{search_escaped}%")), 80),
+                # Title contains search term
+                (func.lower(Listing.title).like(func.lower(f"%{search_escaped}%")), 60),
+                # Description contains search term
+                (func.lower(Listing.description).like(func.lower(f"%{search_escaped}%")), 20),
+            
+                else_=0
+            )
+            
+            # Query with relevance score for search results
+            query = db_session.query(Listing, relevance_score.label('relevance_score')).options(
+                joinedload(Listing.company),
+                joinedload(Listing.job_board)
+            )
+            
+            # Apply search filters
+            search_filter = or_(
+                func.lower(Listing.title).like(func.lower(f"%{search_escaped}%")),
+                func.lower(Listing.description).like(func.lower(f"%{search_escaped}%"))
+            )
+            query = query.filter(search_filter)
+            query = query.order_by(desc(relevance_score), desc(Listing.date_posted))
+        else:
+            # Default query without relevance score when no search
+            query = db_session.query(Listing).options(
+                joinedload(Listing.company),
+                joinedload(Listing.job_board)
+            )
+            query = query.order_by(desc(Listing.date_posted))
+
+        # Location filtering with case-insensitive search
+        if city:
+            city_escaped = city.replace('%', '\\%').replace('_', '\\_')
+            query = query.filter(func.lower(Listing.city).like(func.lower(f"%{city_escaped}%")))
+        if country:
+            country_escaped = country.replace('%', '\\%').replace('_', '\\_')
+            query = query.filter(func.lower(Listing.country).like(func.lower(f"%{country_escaped}%")))
+        
+        # Company filtering
+        if company:
+            query = query.join(Company).filter(Company.name.in_(company))
+            
+        # Location filtering
+        if location:
+            location_filters = []
+            for loc in location:
+                loc_escaped = loc.replace('%', '\\%').replace('_', '\\_')
+                location_filters.append(func.lower(Listing.location).like(func.lower(f"%{loc_escaped}%")))
+            query = query.filter(or_(*location_filters))
+
+        # Date filtering with null-safe comparisons
+        if date_filter == "24h":
+            date_threshold = datetime.now() - timedelta(days=1)
+            query = query.filter(
+                Listing.date_posted.isnot(None),
+                Listing.date_posted >= date_threshold
+            )
+        elif date_filter == "7d":
+            date_threshold = datetime.now() - timedelta(days=7)
+            query = query.filter(
+                Listing.date_posted.isnot(None),
+                Listing.date_posted >= date_threshold
+            )
+        elif date_filter == "new":
+            date_threshold = datetime.now() - timedelta(hours=24)
+            query = query.filter(
+                Listing.date_posted.isnot(None),
+                Listing.date_posted >= date_threshold
+            )
+
+        # Get total count before applying pagination
+        if search:
+            # For search queries, we need to count the base query without the added columns
+            count_query = db_session.query(Listing).options(
+                joinedload(Listing.company),
+                joinedload(Listing.job_board)
+            )
+            count_query = count_query.filter(search_filter)
+            if city:
+                count_query = count_query.filter(func.lower(Listing.city).like(func.lower(f"%{city_escaped}%")))
+            if country:
+                count_query = count_query.filter(func.lower(Listing.country).like(func.lower(f"%{country_escaped}%")))
+            if company:
+                count_query = count_query.join(Company).filter(Company.name.in_(company))
+            if location:
+                location_filters = []
+                for loc in location:
+                    loc_escaped = loc.replace('%', '\\%').replace('_', '\\_')
+                    location_filters.append(func.lower(Listing.location).like(func.lower(f"%{loc_escaped}%")))
+                count_query = count_query.filter(or_(*location_filters))
+            if date_filter == "24h":
+                count_query = count_query.filter(
+                    Listing.date_posted.isnot(None),
+                    Listing.date_posted >= datetime.now() - timedelta(days=1)
+                )
+            elif date_filter == "7d":
+                count_query = count_query.filter(
+                    Listing.date_posted.isnot(None),
+                    Listing.date_posted >= datetime.now() - timedelta(days=7)
+                )
+            elif date_filter == "new":
+                count_query = count_query.filter(
+                    Listing.date_posted.isnot(None),
+                    Listing.date_posted >= datetime.now() - timedelta(hours=24)
+                )
+            total_items = count_query.count()
+        else:
+            total_items = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * per_page
+        query = query.limit(per_page).offset(offset)
+
+        listings = query.all()
+        
+        # Process results based on whether we have search results with relevance scores
+        if search:
+            # For search results, listings is a list of tuples (Listing, relevance_score)
+            processed_listings = []
+            for listing_tuple in listings:
+                listing_obj = listing_tuple[0]
+                relevance_score = listing_tuple[1]
+                processed_listings.append((listing_obj, relevance_score))
+            logger.info(f"Retrieved {len(processed_listings)} search listings (page {page}, total: {total_items})")
+            return processed_listings, total_items
+        else:
+            # For non-search results, listings are just Listing objects
+            logger.info(f"Retrieved {len(listings)} listings (page {page}, total: {total_items})")
+            return listings, total_items
+
+    except Exception as e:
+        logger.error(f"Error fetching listings: {e}")
+        return [], 0
+    finally:
+        db_session.close()
+
+def get_unique_cities():
+    """
+    Fetches all unique cities from job listings.
+    
+    Returns:
+        list: List of unique city names (excluding None/empty values)
+    """
+    db_session = SessionLocal()
+    try:
+        cities = db_session.query(Listing.city).distinct().filter(
+            Listing.city.isnot(None),
+            Listing.city != ''
+        ).order_by(Listing.city).all()
+        
+        # Extract city names from result tuples and filter out any remaining empty values
+        city_list = [city[0] for city in cities if city[0] and city[0].strip()]
+        
+        logger.info(f"Retrieved {len(city_list)} unique cities")
+        return city_list
+        
+    except Exception as e:
+        logger.error(f"Error fetching unique cities: {e}")
+        return []
+    finally:
+        db_session.close()
+
+def get_unique_countries():
+    """
+    Fetches all unique countries from job listings.
+    
+    Returns:
+        list: List of unique country names (excluding None/empty values)
+    """
+    db_session = SessionLocal()
+    try:
+        countries = db_session.query(Listing.country).distinct().filter(
+            Listing.country.isnot(None),
+            Listing.country != ''
+        ).order_by(Listing.country).all()
+        
+        # Extract country names from result tuples and filter out any remaining empty values
+        country_list = [country[0] for country in countries if country[0] and country[0].strip()]
+        
+        logger.info(f"Retrieved {len(country_list)} unique countries")
+        return country_list
+        
+    except Exception as e:
+        logger.error(f"Error fetching unique countries: {e}")
+        return []
+    finally:
+        db_session.close()
+
+def get_unique_companies():
+    """
+    Fetches all unique company names from job listings.
+    
+    Returns:
+        list: List of unique company names (excluding None/empty values)
+    """
+    db_session = SessionLocal()
+    try:
+        companies = db_session.query(Company.name).distinct().filter(
+            Company.name.isnot(None),
+            Company.name != ''
+        ).order_by(Company.name).all()
+        
+        # Extract company names from result tuples and filter out any remaining empty values
+        company_list = [company[0] for company in companies if company[0] and company[0].strip()]
+        
+        logger.info(f"Retrieved {len(company_list)} unique companies")
+        return company_list
+        
+    except Exception as e:
+        logger.error(f"Error fetching unique companies: {e}")
+        return []
+    finally:
+        db_session.close()
+
+def get_unique_locations():
+    """
+    Fetches all unique location strings from job listings.
+    
+    Returns:
+        list: List of unique location strings (excluding None/empty values)
+    """
+    db_session = SessionLocal()
+    try:
+        locations = db_session.query(Listing.location).distinct().filter(
+            Listing.location.isnot(None),
+            Listing.location != ''
+        ).order_by(Listing.location).all()
+        
+        # Extract location strings from result tuples and filter out any remaining empty values
+        location_list = [location[0] for location in locations if location[0] and location[0].strip()]
+        
+        logger.info(f"Retrieved {len(location_list)} unique locations")
+        return location_list
+        
+    except Exception as e:
+        logger.error(f"Error fetching unique locations: {e}")
+        return []
+    finally:
+        db_session.close()

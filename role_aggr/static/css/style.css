@@ -4,12 +4,45 @@
   --bg-color: #060606;
   --card-bg-color: #1e1e1e;
   --text-color: #e0e0e0; /* Keep original text color variable */
-  --accent-color: #050c6f;
+  --accent-color: #3e74bb;
   --secondary-color: #6c757d;
   --success-color: #28a745;
   --danger-color: #dc3545;
   --border-color: #2d2d2d;
   --hover-color: #2c2c2c;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+  border: 1px solid var(--bg-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-color);
+  border: 1px solid var(--bg-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 45, 45, 0.3);
+  border-color: var(--bg-color);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--bg-color);
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--bg-color);
 }
 
 body {
@@ -25,6 +58,171 @@ body {
   max-width: none; /* Remove max width */
   margin: 0; /* Remove margin */
   padding: 0 10px; /* Add 10px padding on sides */
+}
+
+/* Filter Grid Layout - 2 rows, 7 columns */
+.filter-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 1fr 1.2fr 1fr 1fr 0.8fr; /* Adjusted column widths to prevent overlapping */
+  grid-template-rows: auto auto;
+  gap: 0;
+  margin-bottom: 30px;
+  row-gap: 0;
+  border: 1px solid var(--border-color);
+}
+
+/* Reduce text size within filter grid */
+.filter-grid,
+.filter-grid .btn,
+.filter-grid .dropdown-toggle {
+  font-size: 10pt;
+  border-radius: 0;
+}
+
+/* Row 1: Search bar spans all 7 columns */
+.search-group {
+  grid-column: 1 / 8;
+  grid-row: 1;
+  font-size: 10pt;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Ensure search input spans full width */
+.search-group .search-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  font-size: 10pt;
+}
+
+/* Row 2: Each filter element takes one column */
+.filter-grid .dropdown:nth-of-type(2) { /* Company */
+  grid-column: 1;
+  grid-row: 2;
+  border-right: 1px solid var(--border-color);
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.filter-grid .dropdown:nth-of-type(3) { /* Location */
+  grid-column: 2;
+  grid-row: 2;
+  border-right: 1px solid var(--border-color);
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.filter-grid .dropdown:nth-of-type(4) { /* City */
+  grid-column: 3;
+  grid-row: 2;
+  border-right: 1px solid var(--border-color);
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.filter-grid .dropdown:nth-of-type(5) { /* Country */
+  grid-column: 4;
+  grid-row: 2;
+  border-right: 1px solid var(--border-color);
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  /* Removed overflow: hidden to allow dropdown content to display */
+}
+
+.filter-grid fieldset:nth-of-type(6) { /* Date Filter */
+  grid-column: 5;
+  grid-row: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  /* Removed overflow: hidden to allow proper layout */
+}
+
+.filter-grid fieldset:nth-of-type(7) { /* Items Per Page */
+  grid-column: 6;
+  grid-row: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+}
+
+.filter-grid .action-buttons { /* Apply/Clear buttons */
+  grid-column: 7;
+  grid-row: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive design for mobile */
+@media (max-width: 768px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(8, auto);
+    gap: 0;
+  }
+  
+  .search-group {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  .filter-grid .dropdown:nth-of-type(2) { grid-column: 1; grid-row: 2; }
+  .filter-grid .dropdown:nth-of-type(3) { grid-column: 1; grid-row: 3; }
+  .filter-grid .dropdown:nth-of-type(4) { grid-column: 1; grid-row: 4; }
+  .filter-grid .dropdown:nth-of-type(5) { grid-column: 1; grid-row: 5; }
+  .filter-grid fieldset:nth-of-type(6) { grid-column: 1; grid-row: 6; }
+  .filter-grid fieldset:nth-of-type(7) { grid-column: 1; grid-row: 7; }
+  .filter-grid .action-buttons { grid-column: 1; grid-row: 8; }
+}
+
+/* Ensure proper styling for grid elements */
+.filter-grid .form-group {
+  margin: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure Apply/Clear buttons have absolutely no spacing between them */
+.filter-grid .action-buttons {
+  display: flex;
+  gap: 0 !important;
+  align-items: stretch;
+  height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.filter-grid .action-buttons .btn {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+}
+
+.filter-grid .action-buttons .btn:first-child {
+  border-right: 1px solid var(--border-color);
 }
 
 header {
@@ -48,7 +246,100 @@ h1 span:first-child {
 h1 span:last-child {
   font-family: 'Fira Mono', monospace; /* Changed font */
   font-weight: 500; /* Medium weight */
-  color: #154d7e; /* Change color of "/agg" */
+  color: var(--accent-color); /* Blue color for "/aggr" */
+}
+
+/* Relevance bar styles */
+.relevance-bar-container {
+  width: 80px; /* Fixed width to always show 100% scale */
+  height: 20px; /* Double the height from 10px to 20px */
+  background: #1e1e1e; /* Dark background to show empty portion */
+  border: 1px solid var(--border-color); /* Add thin white border to show 100% capacity */
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+  box-sizing: border-box; /* Include border in the element's total width and height */
+  position: relative;
+}
+
+.relevance-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #0c2a52 0%, #3e74bb 50%, #3fd157 100%);
+  background-size: 78px 100%; /* Fixed gradient size based on container width minus border */
+  background-repeat: no-repeat;
+  background-position: left center;
+  border-radius: 1px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+  /* The width will be set by the inline style from the template */
+}
+
+/* Button group styles */
+.button-group {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Adjust the height of all filter buttons here */
+.button-group .btn {
+  padding: 5px 12px;
+  font-size: 10pt;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  height: 32px; /* Reduced height for more compact appearance */
+  min-height: 32px; /* Ensure consistent minimum height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.button-group .btn:hover {
+  background-color: var(--hover-color);
+  border-color: var(--accent-color);
+}
+
+.button-group .btn.active {
+  background-color: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+/* Fieldset styling */
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+fieldset.form-group {
+  border: none;
+}
+
+fieldset .button-group {
+  flex: 1;
+  height: 100%;
+}
+
+fieldset legend {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: var(--text-color);
+  font-size: 14px;
 }
 
 
@@ -116,6 +407,11 @@ h1 span:last-child {
 .job-meta {
   text-align: right;
   min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
 }
 
 .job-source {
@@ -142,12 +438,15 @@ h1 span:last-child {
   align-items: center;
   font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
   font-weight: 500; /* Medium weight */
+  width: 90%; /* Increase width to approximately 1.5x */
+  margin: 0; /* Align to the left */
 }
 
 .filter-form {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
+  width: 100%;
 }
 
 /* Dropdown Filter Styles */
@@ -160,14 +459,25 @@ h1 span:last-child {
 .dropdown {
   position: relative;
   display: inline-block;
+  margin: 0;
+  padding: 0;
+}
+
+/* Specific styling for dropdowns within filter grid */
+.filter-grid .dropdown {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
 }
 
 .dropdown-toggle {
   background-color: var(--bg-color);
   color: var(--text-color);
-  border: 1px solid var(--border-color);
+  border: none;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: 0;
   min-width: 200px;
   font-family: 'Azeret Mono', monospace;
   font-weight: 500;
@@ -176,6 +486,18 @@ h1 span:last-child {
   justify-content: space-between;
   align-items: center;
   transition: background-color 0.2s;
+  margin: 0;
+}
+
+/* Specific styling for dropdown toggles within filter grid */
+.filter-grid .dropdown-toggle {
+  width: 100%;
+  height: 32px; /* Match button height for consistency */
+  min-height: 32px; /* Ensure consistent minimum height */
+  margin: 0;
+  padding: 6px 12px; /* Reduced padding for compact appearance */
+  min-width: unset;
+  box-sizing: border-box;
 }
 
 .dropdown-toggle:hover {
@@ -204,8 +526,37 @@ h1 span:last-child {
   padding-top: 5px; /* Add padding to the top for the search input */
 }
 
+/* Custom scrollbar for dropdown content */
+.dropdown-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-content::-webkit-scrollbar-track {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 45, 45, 0.4);
+  border-color: var(--accent-color);
+}
+
+/* Fix positioning for dropdowns at the end of the row */
+.filter-grid .dropdown:nth-of-type(4) .dropdown-content,
+.filter-grid .dropdown:nth-of-type(5) .dropdown-content {
+  right: 0;
+  left: auto;
+}
+
 .dropdown-search {
-  width: calc(100% - 24px); /* Adjust width for padding */
+  width: 100%;
   padding: 8px 12px;
   margin: 0 12px 5px 12px; /* Add margin around the search input */
   border: 1px solid var(--border-color);
@@ -214,7 +565,7 @@ h1 span:last-child {
   color: var(--text-color);
   font-family: 'Azeret Mono', monospace;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 10pt;
   box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
@@ -225,13 +576,22 @@ h1 span:last-child {
 .checkbox-item {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: 4px 12px;
   cursor: pointer;
   font-family: 'Azeret Mono', monospace;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 10pt;
   transition: background-color 0.2s;
   border-bottom: 1px solid var(--border-color);
+}
+
+/* More specific selectors to force dropdown option styling */
+.dropdown-content .checkbox-item {
+  padding: 4px 12px !important;
+}
+
+.dropdown-content .checkbox-item label {
+  font-size: 10pt !important;
 }
 
 .checkbox-item:last-child {
@@ -277,12 +637,51 @@ h1 span:last-child {
   font-weight: bold;
 }
 
+.btn-primary, .btn-secondary {
+  padding: 2px 2px;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+  font-size: 14px;
+  border: 1px solid;
+  text-decoration: none;
+  display: inline-block;
+  height: 32px; /* Match filter button height */
+  min-height: 32px; /* Ensure consistent minimum height */
+  box-sizing: border-box;
+}
+
+.btn-primary {
+  background-color: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+.btn-primary:hover {
+  background-color: #0741a3;
+  border-color: #0741a3;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+  color: white;
+}
+
 .filter-button, .clear-button {
   background-color: transparent;
   color: var(--text-color);
   border: none; /* Remove border */
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 0;
   cursor: pointer;
   transition: background-color 0.2s;
   font-family: 'Azeret Mono', monospace; /* Apply Azeret Mono */
@@ -423,3 +822,170 @@ footer {
 }
 
 
+
+/* Form Styling */
+.filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+/* Button container for Apply and Clear buttons */
+.form-group:has(.btn-primary, .btn-secondary) {
+  flex-direction: row;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.form-group label {
+  font-size: 1rem;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+.form-group input[type="text"],
+.form-group select {
+  padding: 0.5rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 0;
+  font-size: 1rem;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+}
+
+/* Search input specific styling */
+.search-group {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.search-input {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.75rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 0;
+  font-size: 10pt;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(5, 12, 111, 0.2);
+}
+
+/* Filters row layout */
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+}
+
+.filters-row .form-group {
+  margin-bottom: 0;
+}
+
+.form-group select {
+  cursor: pointer;
+}
+
+.form-group select option {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* Button Group Styling */
+.button-group {
+  display: flex;
+  gap: 0;
+}
+
+.button-group button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  cursor: pointer;
+  border-radius: 0;
+  transition: all 0.3s ease;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+}
+
+.button-group button:first-child {
+  border-radius: 0;
+}
+
+.button-group button:last-child {
+  border-radius: 0;
+}
+
+.button-group button:hover {
+  background-color: var(--hover-color);
+  border-color: var(--accent-color);
+}
+
+.button-group button.active {
+  background-color: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+
+/* Pagination Styling */
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  padding-left: 200px; /* Align with job listings */
+}
+
+.pagination-list {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pagination-list li {
+  list-style: none;
+}
+
+.pagination a {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 0;
+  text-decoration: none;
+  color: var(--text-color);
+  background-color: transparent;
+  transition: background-color 0.2s;
+  display: inline-block;
+}
+
+.pagination a:hover {
+  background-color: var(--hover-color);
+}
+
+.pagination .active a {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.pagination .ellipsis span {
+  padding: 0.5rem 0.75rem;
+  color: var(--secondary-color);
+}

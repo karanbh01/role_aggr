@@ -24,8 +24,12 @@
             }
             
             // Initialize selected text on page load
-            updateSelectedText('company');
-            updateSelectedText('location');
+            if (document.getElementById('company-selected-text')) {
+                updateSelectedText('company');
+            }
+            if (document.getElementById('location-selected-text')) {
+                updateSelectedText('location');
+            }
         });
 
         // Function to toggle dropdown visibility
@@ -65,7 +69,13 @@
             const textElement = document.getElementById(`${filterType}-selected-text`);
             
             if (checkboxes.length === 0) {
-                textElement.textContent = `Select ${filterType === 'company' ? 'Companies' : 'Locations'}`;
+                if (filterType === 'company') {
+                    textElement.textContent = 'Select Companies';
+                } else if (filterType === 'location') {
+                    textElement.textContent = 'Select Locations';
+                } else {
+                    textElement.textContent = `Select ${filterType}`;
+                }
             } else if (checkboxes.length === 1) {
                 textElement.textContent = checkboxes[0].value;
             } else {
@@ -80,9 +90,45 @@
                 checkbox.checked = false;
             });
             
+            // Clear radio buttons and select "All" options (no longer used since City/Country are now checkboxes)
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                if (radio.value === '') {
+                    radio.checked = true;
+                } else {
+                    radio.checked = false;
+                }
+            });
+            
+            // Clear dropdowns
+            document.querySelectorAll('select').forEach(select => {
+                select.selectedIndex = 0;
+            });
+            
+            // Clear text inputs
+            document.querySelectorAll('input[type="text"]').forEach(input => {
+                input.value = '';
+            });
+            
+            // Clear hidden inputs
+            document.querySelectorAll('input[type="hidden"]').forEach(input => {
+                input.value = '';
+            });
+            
             // Update display text
-            updateSelectedText('company');
-            updateSelectedText('location');
+            if (document.getElementById('company-selected-text')) {
+                updateSelectedText('company');
+            }
+            if (document.getElementById('location-selected-text')) {
+                updateSelectedText('location');
+            }
+            updateCitySelection();
+            updateCountrySelection();
+            
+            // Clear button group selections
+            document.querySelectorAll('.button-group .btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-pressed', 'false');
+            });
             
             // Submit the form to refresh with no filters
             document.querySelector('.filter-form').submit();
@@ -160,6 +206,90 @@
                 });
             });
         });
+
+        // Function to set hidden input values for button groups
+        function setHiddenInput(inputId, value) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = value;
+                
+                // Find the button group containing this input
+                const form = input.closest('form');
+                const fieldset = input.closest('fieldset');
+                
+                if (fieldset) {
+                    // Update button appearance and aria-pressed states within this fieldset
+                    const buttons = fieldset.querySelectorAll('[data-value]');
+                    buttons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.setAttribute('aria-pressed', 'false');
+                        
+                        if (btn.getAttribute('data-value') === value) {
+                            btn.classList.add('active');
+                            btn.setAttribute('aria-pressed', 'true');
+                        }
+                    });
+                }
+            }
+        }
+
+        // Initialize button states on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateFilter = document.getElementById('date_filter');
+            const itemsPerPage = document.getElementById('items_per_page');
+            
+            if (dateFilter && dateFilter.value) {
+                const fieldset = dateFilter.closest('fieldset');
+                if (fieldset) {
+                    const btn = fieldset.querySelector(`[data-value="${dateFilter.value}"]`);
+                    if (btn) {
+                        btn.classList.add('active');
+                        btn.setAttribute('aria-pressed', 'true');
+                    }
+                }
+            }
+            
+            if (itemsPerPage && itemsPerPage.value) {
+                const fieldset = itemsPerPage.closest('fieldset');
+                if (fieldset) {
+                    const btn = fieldset.querySelector(`[data-value="${itemsPerPage.value}"]`);
+                    if (btn) {
+                        btn.classList.add('active');
+                        btn.setAttribute('aria-pressed', 'true');
+                    }
+                }
+            }
+        });
+
+        // Function to update city selection display
+        function updateCitySelection() {
+            const selectedRadio = document.querySelector('input[name="city"]:checked');
+            const textElement = document.getElementById('city-selected-text');
+            
+            if (selectedRadio && selectedRadio.value) {
+                textElement.textContent = selectedRadio.value;
+            } else {
+                textElement.textContent = 'Select City';
+            }
+        }
+
+        // Function to update country selection display
+        function updateCountrySelection() {
+            const selectedRadio = document.querySelector('input[name="country"]:checked');
+            const textElement = document.getElementById('country-selected-text');
+            
+            if (selectedRadio && selectedRadio.value) {
+                textElement.textContent = selectedRadio.value;
+            } else {
+                textElement.textContent = 'Select Country';
+            }
+        }
+
+        // Initialize city and country selection on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCitySelection();
+            updateCountrySelection();
+        });
     </script>
 </head>
 <body>
@@ -182,55 +312,116 @@
         <div class="controls">
 
             <div class="filter-section">
-                <form action="/" method="get" class="filter-form">
-                    <!-- Company Filter Dropdown -->
-                    <div class="filter-dropdown">
-                        <label for="company-filter">Filter by Company:</label>
-                        <div class="dropdown">
-                            <button type="button" class="dropdown-toggle" onclick="toggleDropdown('company-dropdown')">
+                <form action="/" method="get" class="filter-form" role="search" aria-label="Job search and filtering">
+                    <div class="filter-grid">
+                        <!-- Row 1: Search Input spanning all columns -->
+                        <div class="search-group">
+                            <input type="text" id="search" name="search" placeholder="Search jobs..." value="{{ request.args.get('search', '') }}" class="search-input">
+                        </div>
+
+                        <!-- Row 2: Individual filter columns -->
+                        <!-- Column 1: Company Filter -->
+                        <div class="dropdown form-group">
+                            <div class="dropdown-toggle" onclick="toggleDropdown('company-dropdown')" aria-expanded="false">
                                 <span id="company-selected-text">Select Companies</span>
                                 <span class="dropdown-arrow">▼</span>
-                            </button>
+                            </div>
                             <div id="company-dropdown" class="dropdown-content">
-                                <input type="text" class="dropdown-search" placeholder="Search companies...">
-                                {% for company in companies %}
-                                    <label class="checkbox-item">
-                                        <input type="checkbox" name="company" value="{{ company }}"
-                                               {% if company in selected_companies %}checked{% endif %}
-                                               onchange="updateSelectedText('company')">
-                                        <span class="checkmark"></span>
-                                        {{ company }}
-                                    </label>
+                                <input type="text" class="dropdown-search" placeholder="Search companies..." oninput="filterDropdownOptions('company-dropdown')">
+                                {% for available_company in available_companies %}
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" name="company" value="{{ available_company }}" id="company-{{ loop.index }}" onchange="updateSelectedText('company')" {% if available_company in request.args.getlist('company') %}checked{% endif %}>
+                                        <label for="company-{{ loop.index }}">{{ available_company }}</label>
+                                    </div>
                                 {% endfor %}
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Location Filter Dropdown -->
-                    <div class="filter-dropdown">
-                        <label for="location-filter">Filter by Location:</label>
-                        <div class="dropdown">
-                            <button type="button" class="dropdown-toggle" onclick="toggleDropdown('location-dropdown')">
+
+                        <!-- Column 2: Location Filter -->
+                        <div class="dropdown form-group">
+                            <div class="dropdown-toggle" onclick="toggleDropdown('location-dropdown')" aria-expanded="false">
                                 <span id="location-selected-text">Select Locations</span>
                                 <span class="dropdown-arrow">▼</span>
-                            </button>
+                            </div>
                             <div id="location-dropdown" class="dropdown-content">
-                                <input type="text" class="dropdown-search" placeholder="Search locations...">
-                                {% for location in locations %}
-                                    <label class="checkbox-item">
-                                        <input type="checkbox" name="location" value="{{ location }}"
-                                               {% if location in selected_locations %}checked{% endif %}
-                                               onchange="updateSelectedText('location')">
-                                        <span class="checkmark"></span>
-                                        {{ location }}
-                                    </label>
+                                <input type="text" class="dropdown-search" placeholder="Search locations..." oninput="filterDropdownOptions('location-dropdown')">
+                                {% for available_location in available_locations %}
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" name="location" value="{{ available_location }}" id="location-{{ loop.index }}" onchange="updateSelectedText('location')" {% if available_location in request.args.getlist('location') %}checked{% endif %}>
+                                        <label for="location-{{ loop.index }}">{{ available_location }}</label>
+                                    </div>
                                 {% endfor %}
                             </div>
                         </div>
+
+                        <!-- Column 3: City Filter -->
+                        <div class="dropdown form-group">
+                            <div class="dropdown-toggle" onclick="toggleDropdown('city-dropdown')" aria-expanded="false">
+                                <span id="city-selected-text">{{ request.args.get('city', 'Select City') }}</span>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div id="city-dropdown" class="dropdown-content">
+                                <input type="text" class="dropdown-search" placeholder="Search cities..." oninput="filterDropdownOptions('city-dropdown')">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" name="city" value="" id="city-all" onchange="updateCitySelection()" {% if not request.args.get('city') %}checked{% endif %}>
+                                    <label for="city-all">All Cities</label>
+                                </div>
+                                {% for available_city in available_cities %}
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" name="city" value="{{ available_city }}" id="city-{{ loop.index }}" onchange="updateCitySelection()" {% if request.args.get('city') == available_city %}checked{% endif %}>
+                                        <label for="city-{{ loop.index }}">{{ available_city }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Column 4: Country Filter -->
+                        <div class="dropdown form-group">
+                            <div class="dropdown-toggle" onclick="toggleDropdown('country-dropdown')" aria-expanded="false">
+                                <span id="country-selected-text">{{ request.args.get('country', 'Select Country') }}</span>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div id="country-dropdown" class="dropdown-content">
+                                <input type="text" class="dropdown-search" placeholder="Search countries..." oninput="filterDropdownOptions('country-dropdown')">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" name="country" value="" id="country-all" onchange="updateCountrySelection()" {% if not request.args.get('country') %}checked{% endif %}>
+                                    <label for="country-all">All Countries</label>
+                                </div>
+                                {% for available_country in available_countries %}
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" name="country" value="{{ available_country }}" id="country-{{ loop.index }}" onchange="updateCountrySelection()" {% if request.args.get('country') == available_country %}checked{% endif %}>
+                                        <label for="country-{{ loop.index }}">{{ available_country }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Column 5: Date Filter Button Group -->
+                        <fieldset class="form-group">
+                            <div class="button-group" role="radiogroup" aria-label="Select date filter">
+                                <button type="button" class="btn" data-value="24h" aria-pressed="false" onclick="setHiddenInput('date_filter', '24h')">24h</button>
+                                <button type="button" class="btn" data-value="7d" aria-pressed="false" onclick="setHiddenInput('date_filter', '7d')">7d</button>
+                                <button type="button" class="btn" data-value="new" aria-pressed="false" onclick="setHiddenInput('date_filter', 'new')">New Jobs</button>
+                            </div>
+                            <input type="hidden" id="date_filter" name="date_filter" value="{{ request.args.get('date_filter', '') }}">
+                        </fieldset>
+
+                        <!-- Column 6: Items Per Page Button Group -->
+                        <fieldset class="form-group">
+                            <div class="button-group" role="radiogroup" aria-label="Select items per page">
+                                <button type="button" class="btn" data-value="20" aria-pressed="false" onclick="setHiddenInput('items_per_page', '20')">20</button>
+                                <button type="button" class="btn" data-value="50" aria-pressed="false" onclick="setHiddenInput('items_per_page', '50')">50</button>
+                                <button type="button" class="btn" data-value="100" aria-pressed="false" onclick="setHiddenInput('items_per_page', '100')">100</button>
+                            </div>
+                            <input type="hidden" id="items_per_page" name="items_per_page" value="{{ request.args.get('items_per_page', '') }}">
+                        </fieldset>
+
+                        <!-- Column 7: Apply and Clear Buttons -->
+                        <div class="form-group action-buttons">
+                            <button type="submit" class="btn btn-primary" aria-label="Apply filters">Apply</button>
+                            <button type="button" class="btn btn-secondary" aria-label="Clear all filters" onclick="clearFilters()">Clear</button>
+                        </div>
                     </div>
-                    
-                    <button type="submit" class="filter-button" onclick="return submitFilters()">Apply Filter</button>
-                    <button type="button" class="clear-button" onclick="clearFilters()">Clear All</button>
                 </form>
             </div>
             
@@ -245,7 +436,7 @@
         <div class="job-listings" style="display: none;">
             {% if jobs %}
                 {% for job in jobs %}
-                    <a href="{{ job.url }}" class="job-card" target="_blank">
+                    <a href="{{ job.url }}" class="job-card" target="_blank" rel="noopener noreferrer">
                         <div class="job-info">
                             <h2 class="job-title">{{ job.title }}
                                 {% if job.is_new %}
@@ -268,6 +459,18 @@
                         </div>
                         <div class="job-meta">
                             <div class="job-source">{{ job.source }}</div>
+                            <!-- Relevance Score Bar - Only show when search is active -->
+                            {% if search_query and search_query.strip() %}
+                            <div class="relevance-bar-container" title="Relevance Score: {{ job.relevance_score }}%">
+                                <div class="relevance-bar"
+                                     role="progressbar"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100"
+                                     aria-valuenow="{{ job.relevance_score }}"
+                                     aria-label="Job relevance score"
+                                     style="width: {{ job.relevance_score }}%"></div>
+                            </div>
+                            {% endif %}
                         </div>
                     </a>
                 {% endfor %}
@@ -276,6 +479,28 @@
                     <h2>No job listings found</h2>
                     <p>Try refreshing the listings or check back later.</p>
                 </div>
+            {% endif %}
+        </div>
+        <!-- Pagination Controls -->
+        <div class="pagination">
+            {% if pagination %}
+                <nav aria-label="Pagination Navigation">
+                    <ul class="pagination-list">
+                        {% if pagination.prev_page %}
+                            <li><a href="{{ url_for('index', **dict(request.args, page=pagination.prev_page)) }}">Previous</a></li>
+                        {% endif %}
+                        {% for page_num in pagination.pages %}
+                            {% if page_num == '...' %}
+                                <li class="ellipsis"><span>...</span></li>
+                            {% else %}
+                                <li {% if page_num == pagination.current_page %}class="active"{% endif %}><a href="{{ url_for('index', **dict(request.args, page=page_num)) }}">{{ page_num }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if pagination.next_page %}
+                            <li><a href="{{ url_for('index', **dict(request.args, page=pagination.next_page)) }}">Next</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
             {% endif %}
         </div>
         
