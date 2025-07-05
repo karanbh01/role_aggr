@@ -377,7 +377,7 @@ fieldset legend {
 .job-card:hover {
   background-color: var(--hover-color);
 }
-
+ 
 
 .job-info {
   flex: 1;
@@ -732,6 +732,8 @@ footer {
   padding: 20px 0;
   border-top: 1px solid var(--border-color);
   color: var(--secondary-color);
+  font-family:'geist', sans-serif; /* Apply Geist font */
+  font-size: 10pt;
 }
 
 /* Responsive adjustments */
@@ -975,6 +977,8 @@ footer {
   background-color: transparent;
   transition: background-color 0.2s;
   display: inline-block;
+  font-family:'geist', sans-serif; /* Apply Geist font */
+  font-size: 8pt;
 }
 
 .pagination a:hover {
