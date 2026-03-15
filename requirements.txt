@@ -1,13 +1,19 @@
-Flask==2.3.3
-requests==2.31.0
-beautifulsoup4==4.12.2
-selenium==4.15.2
-SQLAlchemy==2.0.40
-python-dotenv==1.1.0
-pytz==2025.2
-python-dateutil==2.8.2
-dateparser==1.2.1
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+jinja2==3.1.4
+
+# Database
+sqlalchemy[asyncio]==2.0.40
+aiosqlite==0.20.0
+
+# Scraping
 playwright==1.52.0
-numpy==2.2.6
-pandas==2.2.3 
+beautifulsoup4==4.12.2
+
+# Parsing
+python-dateutil==2.8.2
+
+# Utilities
+python-dotenv==1.1.0
 tqdm==4.67.1
