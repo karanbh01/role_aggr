@@ -63,5 +63,6 @@ docs/_build/
 /.roomodes
 planning/
 .rooignore
+.claude/
 
 role_aggr/scripts/csv
