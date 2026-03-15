@@ -300,6 +300,7 @@ async def get_listings(
                 "region": l.region,
                 "date_posted": l.date_posted.strftime("%b %d, %Y") if l.date_posted else "Unknown",
                 "url": l.link,
+                "source": l.job_board.platform.title() if l.job_board else "Unknown",
                 "is_new": l.date_posted and (now - l.date_posted).total_seconds() < 86400 if l.date_posted else False,
             }
             for l in listings

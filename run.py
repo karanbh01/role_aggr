@@ -30,8 +30,10 @@ def main():
     print("  +----------------------------------------------+")
     print("  |            role/aggr v2                       |")
     print("  +----------------------------------------------+")
-    print(f"  |  Local:   http://localhost:{PORT}              |")
-    print(f"  |  Network: http://{local_ip}:{PORT:<14s}|")
+    local_addr = f"http://localhost:{PORT}"
+    print(f"  |  Local:   {local_addr:<33s}|")
+    network_addr = f"http://{local_ip}:{PORT}"
+    print(f"  |  Network: {network_addr:<33s}|")
     print("  +----------------------------------------------+")
     print()
 
