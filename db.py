@@ -289,7 +289,7 @@ async def get_listings(
         result = await session.execute(query)
         listings = result.scalars().all()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         return [
             {
                 "title": l.title,
